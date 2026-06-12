@@ -6,25 +6,24 @@ namespace Tests\Feature\Api;
 
 use App\Domain\Account\Enums\AccountStatus;
 use App\Domain\Customer\Enums\CustomerStatus;
-use App\Domain\Customer\Models\Customer;
+use App\Domain\Ledger\Enums\LedgerDirection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Tests\Feature\Api\Concerns\CreatesApiFixtures;
 use Tests\TestCase;
 
 final class AccountApiTest extends TestCase
 {
+    use CreatesApiFixtures;
     use RefreshDatabase;
 
     public function test_can_create_account_for_active_customer(): void
     {
-        $customer = Customer::query()->create([
-            'name' => 'Alice Morgan',
-            'email' => 'alice@example.com',
-            'status' => CustomerStatus::Active,
-        ]);
+        $customer = $this->createCustomer();
 
         $response = $this->postJson('/api/accounts', [
             'customer_uuid' => $customer->uuid,
-            'currency' => 'rub',
+            'currency'      => 'rub',
         ]);
 
         $response
@@ -38,40 +37,36 @@ final class AccountApiTest extends TestCase
 
         $this->assertDatabaseHas('accounts', [
             'customer_id' => $customer->id,
-            'currency' => 'RUB',
-            'balance' => 0,
-            'status' => AccountStatus::Active->value,
+            'currency'    => 'RUB',
+            'balance'     => 0,
+            'status'      => AccountStatus::Active->value,
         ]);
     }
 
     public function test_cannot_create_account_for_blocked_customer(): void
     {
-        $customer = Customer::query()->create([
-            'name' => 'Blocked User',
-            'email' => 'blocked@example.com',
-            'status' => CustomerStatus::Blocked,
-        ]);
+        $customer = $this->createCustomer(
+            name: 'Blocked User',
+            email: 'blocked@example.com',
+            status: CustomerStatus::Blocked,
+        );
 
         $response = $this->postJson('/api/accounts', [
             'customer_uuid' => $customer->uuid,
-            'currency' => 'RUB',
+            'currency'      => 'RUB',
         ]);
 
         $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Cannot open account for inactive customer.');
+            ->assertJsonPath('message', 'Не удается открыть счет для неактивного клиента.');
     }
 
     public function test_can_show_account_by_uuid(): void
     {
-        $customer = Customer::query()->create([
-            'name' => 'Alice Morgan',
-            'email' => 'alice@example.com',
-            'status' => CustomerStatus::Active,
-        ]);
+        $customer = $this->createCustomer();
 
         $createResponse = $this->postJson('/api/accounts', [
             'customer_uuid' => $customer->uuid,
-            'currency' => 'USD',
+            'currency'      => 'USD',
         ]);
 
         $accountUuid = $createResponse->json('data.uuid');
@@ -81,5 +76,71 @@ final class AccountApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.uuid', $accountUuid)
             ->assertJsonPath('data.currency', 'USD');
+    }
+
+    public function test_can_list_accounts(): void
+    {
+        $customer = $this->createCustomer();
+        $account = $this->createAccount($customer, currency: 'USD');
+
+        $response = $this->getJson('/api/accounts');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.uuid', $account->uuid)
+            ->assertJsonStructure([
+                'data' => [
+                    ['uuid', 'currency', 'balance', 'status'],
+                ],
+                'links',
+                'meta',
+            ]);
+    }
+
+    public function test_can_get_account_balance(): void
+    {
+        $account = $this->createAccount($this->createCustomer());
+        $this->depositToAccount($account, 2500, 'balance-deposit-001');
+
+        $response = $this->getJson('/api/accounts/'.$account->uuid.'/balance');
+
+        $response->assertOk()
+            ->assertJsonPath('account_uuid', $account->uuid)
+            ->assertJsonPath('balance', 2500)
+            ->assertJsonPath('currency', 'USD');
+    }
+
+    public function test_can_get_account_ledger_after_deposit(): void
+    {
+        $account = $this->createAccount($this->createCustomer());
+        $this->depositToAccount($account, 1500, 'ledger-deposit-001');
+
+        $response = $this->getJson('/api/accounts/'.$account->uuid.'/ledger');
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.direction', LedgerDirection::Credit->value)
+            ->assertJsonPath('data.0.amount', 1500)
+            ->assertJsonPath('data.0.account_uuid', $account->uuid)
+            ->assertJsonStructure([
+                'data' => [
+                    ['direction', 'amount', 'currency', 'balance_after'],
+                ],
+                'links',
+                'meta',
+            ]);
+    }
+
+    public function test_returns_404_for_unknown_account(): void
+    {
+        $response = $this->getJson('/api/accounts/'.Str::uuid()->toString());
+
+        $response->assertNotFound();
+    }
+
+    public function test_validates_store_account_request(): void
+    {
+        $response = $this->postJson('/api/accounts', []);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['customer_uuid', 'currency']);
     }
 }

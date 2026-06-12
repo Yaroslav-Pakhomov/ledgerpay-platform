@@ -7,8 +7,8 @@ namespace App\Application\Account\Services;
 use App\Application\Account\DTO\CreateAccountData;
 use App\Domain\Account\Enums\AccountStatus;
 use App\Domain\Account\Models\Account;
+use App\Domain\Customer\Exceptions\InactiveCustomerException;
 use App\Domain\Customer\Models\Customer;
-use DomainException;
 
 /**
  * Application service для работы со счетами.
@@ -31,17 +31,19 @@ final class AccountService
 {
     public function create(CreateAccountData $data): Account
     {
-        $customer = Customer::query()->findOrFail($data->customerId);
+        $customer = Customer::query()
+            ->where('uuid', $data->customerUuid)
+            ->firstOrFail();
 
-        if (! $customer->isActive()) {
-            throw new DomainException('Cannot open account for inactive customer.');
+        if (!$customer->isActive()) {
+            throw new InactiveCustomerException;
         }
 
         return Account::query()->create([
             'customer_id' => $customer->id,
-            'currency' => strtoupper($data->currency),
-            'balance' => 0,
-            'status' => AccountStatus::Active,
+            'currency'    => strtoupper($data->currency),
+            'balance'     => 0,
+            'status'      => AccountStatus::Active,
         ]);
     }
 }

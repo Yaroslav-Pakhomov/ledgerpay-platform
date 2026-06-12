@@ -16,7 +16,7 @@ namespace App\Application\Account\DTO;
 final readonly class CreateAccountData
 {
     public function __construct(
-        public int $customerId,
+        public string $customerUuid,
         public string $currency,
     ) {}
 }

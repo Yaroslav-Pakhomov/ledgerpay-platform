@@ -7,10 +7,10 @@ namespace App\Http\Controllers\Api;
 use App\Application\Account\DTO\CreateAccountData;
 use App\Application\Account\Services\AccountService;
 use App\Domain\Account\Models\Account;
-use App\Domain\Customer\Models\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreAccountRequest;
 use App\Http\Resources\Account\AccountResource;
+use App\Http\Resources\LedgerEntry\LedgerEntryResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response as ResponseAlias;
@@ -29,16 +29,11 @@ final class AccountController extends Controller
 
     public function store(
         StoreAccountRequest $request,
-        AccountService      $service,
-    ): JsonResponse
-    {
-        $customer = Customer::query()
-            ->where('uuid', $request->string('customer_uuid')->toString())
-            ->firstOrFail();
-
+        AccountService $service,
+    ): JsonResponse {
         $account = $service->create(
             new CreateAccountData(
-                customerId: $customer->id,
+                customerUuid: $request->string('customer_uuid')->toString(),
                 currency: $request->string('currency')->toString(),
             )
         );
@@ -56,5 +51,32 @@ final class AccountController extends Controller
             ->firstOrFail();
 
         return new AccountResource($account);
+    }
+
+    public function balance(string $uuid): JsonResponse
+    {
+        $account = Account::query()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        return response()->json([
+            'account_uuid' => $account->uuid,
+            'balance'      => $account->balance,
+            'currency'     => $account->currency,
+        ]);
+    }
+
+    public function ledger(string $uuid): AnonymousResourceCollection
+    {
+        $account = Account::query()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $entries = $account->ledgerEntries()
+            ->with(['transaction', 'account'])
+            ->latest()
+            ->paginate(50);
+
+        return LedgerEntryResource::collection($entries);
     }
 }

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Account\Models;
 
 use App\Domain\Account\Enums\AccountStatus;
+use App\Domain\Account\Exceptions\CurrencyMismatchException;
+use App\Domain\Account\Exceptions\InactiveAccountException;
+use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Ledger\Models\LedgerEntry;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -84,6 +87,33 @@ final class Account extends Model
     }
 
     /**
+     * Зачисляет средства на счет.
+     *
+     * Проверяет активность счета и совпадение валют,
+     * затем увеличивает баланс.
+     */
+    public function credit(int $amount, string $currency): void
+    {
+        $this->assertActive();
+        $this->assertCurrency($currency);
+        $this->balance += $amount;
+    }
+
+    /**
+     * Списывает средства со счета.
+     *
+     * Проверяет активность, валюту и достаточность средств,
+     * затем уменьшает баланс.
+     */
+    public function debit(int $amount, string $currency): void
+    {
+        $this->assertActive();
+        $this->assertCurrency($currency);
+        $this->assertSufficientFunds($amount);
+        $this->balance -= $amount;
+    }
+
+    /**
      * Связь: счет принадлежит одному клиенту.
      */
     public function customer(): BelongsTo
@@ -97,5 +127,38 @@ final class Account extends Model
     public function ledgerEntries(): HasMany
     {
         return $this->hasMany(LedgerEntry::class, 'account_id', 'id');
+    }
+
+    /**
+     * Проверяет доменный инвариант:
+     * денежные операции разрешены только для активных счетов.
+     */
+    private function assertActive(): void
+    {
+        if (!$this->isActive()) {
+            throw new InactiveAccountException;
+        }
+    }
+
+    /**
+     * Проверяет доменный инвариант:
+     * валюта операции должна совпадать с валютой счета.
+     */
+    private function assertCurrency(string $currency): void
+    {
+        if ($this->currency !== strtoupper($currency)) {
+            throw new CurrencyMismatchException;
+        }
+    }
+
+    /**
+     * Проверяет доменный инвариант:
+     * списание невозможно, если средств недостаточно.
+     */
+    private function assertSufficientFunds(int $amount): void
+    {
+        if ($this->balance < $amount) {
+            throw new InsufficientFundsException;
+        }
     }
 }

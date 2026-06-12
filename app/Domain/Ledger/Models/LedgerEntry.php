@@ -9,6 +9,7 @@ use App\Domain\Ledger\Enums\LedgerDirection;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /**
  * Запись бухгалтерского журнала (Ledger).
@@ -34,7 +35,33 @@ final class LedgerEntry extends Model
     /**
      * Разрешаем массовое заполнение атрибутов.
      */
-    protected $guarded = [];
+    protected $fillable = [
+        'transaction_id',
+        'account_id',
+        'direction',
+        'amount',
+        'currency',
+        'balance_after',
+    ];
+
+    /**
+     * Запрещает изменение и удаление записей после создания.
+     *
+     * Ledger хранит историю операций — уже созданную запись
+     * нельзя править или удалять, только добавлять новые.
+     */
+    protected static function booted(): void
+    {
+        // Любая попытка изменить запись завершится ошибкой.
+        self::updating(function (): never {
+            throw new LogicException('Записи в бухгалтерской книге являются неизменяемыми.');
+        });
+
+        // Любая попытка удалить запись завершится ошибкой.
+        self::deleting(function (): never {
+            throw new LogicException('Записи в бухгалтерской книге являются неизменяемыми.');
+        });
+    }
 
     /**
      * Преобразование атрибутов модели.
