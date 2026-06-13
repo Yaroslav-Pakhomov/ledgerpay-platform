@@ -20,11 +20,12 @@ final class AccountApiTest extends TestCase
     public function test_can_create_account_for_active_customer(): void
     {
         $customer = $this->createCustomer();
-
-        $response = $this->postJson('/api/accounts', [
+        $data = [
             'customer_uuid' => $customer->uuid,
             'currency'      => 'rub',
-        ]);
+        ];
+
+        $response = $this->post(route('api.accounts.store'), $data);
 
         $response
             ->assertCreated()
@@ -50,11 +51,12 @@ final class AccountApiTest extends TestCase
             email: 'blocked@example.com',
             status: CustomerStatus::Blocked,
         );
-
-        $response = $this->postJson('/api/accounts', [
+        $data = [
             'customer_uuid' => $customer->uuid,
             'currency'      => 'RUB',
-        ]);
+        ];
+
+        $response = $this->post(route('api.accounts.store'), $data);
 
         $response->assertUnprocessable()
             ->assertJsonPath('message', 'Не удается открыть счет для неактивного клиента.');

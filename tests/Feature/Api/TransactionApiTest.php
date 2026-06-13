@@ -26,7 +26,7 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('deposit-001'));
 
-        $response->assertOk()
+        $response->assertCreated()
             ->assertJsonPath('data.type', 'deposit')
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.amount', 1000)
@@ -61,7 +61,7 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('deposit-idem-001'));
 
-        $first->assertOk();
+        $first->assertCreated();
         $second->assertOk()
             ->assertJsonPath('data.uuid', $first->json('data.uuid'));
 
@@ -100,9 +100,8 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('deposit-inactive-001'));
 
-        $response->assertCreated()
-            ->assertJsonPath('data.status', 'failed')
-            ->assertJsonPath('data.failure_reason', 'Счет неактивен.');
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'Счет неактивен.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -120,9 +119,8 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'EUR',
         ], $this->idempotencyHeaders('deposit-currency-001'));
 
-        $response->assertCreated()
-            ->assertJsonPath('data.status', 'failed')
-            ->assertJsonPath('data.failure_reason', 'Валюта операции не совпадает с валютой счета.');
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'Валюта операции не совпадает с валютой счета.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -141,7 +139,7 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('withdraw-001'));
 
-        $response->assertOk()
+        $response->assertCreated()
             ->assertJsonPath('data.type', 'withdrawal')
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.source_account_uuid', $account->uuid);
@@ -168,9 +166,8 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('withdraw-insufficient-001'));
 
-        $response->assertCreated()
-            ->assertJsonPath('data.status', 'failed')
-            ->assertJsonPath('data.failure_reason', 'Недостаточно средств.');
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'Недостаточно средств.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -195,7 +192,7 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('withdraw-idem-001'));
 
-        $first->assertOk();
+        $first->assertCreated();
         $second->assertOk()
             ->assertJsonPath('data.uuid', $first->json('data.uuid'));
 
@@ -219,7 +216,7 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('transfer-001'));
 
-        $response->assertOk()
+        $response->assertCreated()
             ->assertJsonPath('data.type', 'transfer')
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.source_account_uuid', $source->uuid)
@@ -254,9 +251,8 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('transfer-insufficient-001'));
 
-        $response->assertCreated()
-            ->assertJsonPath('data.status', 'failed')
-            ->assertJsonPath('data.failure_reason', 'Недостаточно средств.');
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'Недостаточно средств.');
 
         $this->assertDatabaseHas('accounts', ['id' => $source->id, 'balance' => 0]);
         $this->assertDatabaseHas('accounts', ['id' => $target->id, 'balance' => 0]);

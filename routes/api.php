@@ -56,6 +56,9 @@ Route::controller(TransactionController::class)->prefix('transactions')->name('a
     // Перевод между счетами
     Route::post('/transfer', 'transfer')->name('transfer');
 
+    // Повтор failed-транзакцию
+    Route::post('/{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+
     // Одна транзакция по uuid
     Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
 });

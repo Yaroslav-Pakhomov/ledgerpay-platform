@@ -113,6 +113,20 @@ final class TransactionController extends Controller
     }
 
     /**
+     * Повторно ставит failed-транзакцию в очередь.
+     */
+    public function retry(
+        string $uuid,
+        TransactionService $service,
+    ): TransactionResource {
+        $transaction = $service->retry($uuid);
+
+        return new TransactionResource(
+            $transaction->load(['sourceAccount', 'targetAccount'])
+        );
+    }
+
+    /**
      * Возвращает одну транзакцию по uuid.
      *
      * Вместе с транзакцией загружаются связанные счета
