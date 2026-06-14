@@ -24,6 +24,10 @@ use LogicException;
  * Важное правило:
  * после создания запись не должна изменяться или удаляться.
  * Ошибки исправляются только созданием новых корректирующих записей.
+ *
+ * @property LedgerDirection $direction
+ * @property-read Transaction $transaction
+ * @property-read Account     $account
  */
 final class LedgerEntry extends Model
 {

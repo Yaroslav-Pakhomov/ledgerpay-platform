@@ -28,7 +28,7 @@ final class LedgerEntryResource extends JsonResource
             'amount'        => $this->amount,
             'currency'      => $this->currency,
             'balance_after' => $this->balance_after,
-            'created_at'    => $this->created_at?->toISOString(),
+            'created_at'    => $this->created_at->toISOString(),
         ];
     }
 }

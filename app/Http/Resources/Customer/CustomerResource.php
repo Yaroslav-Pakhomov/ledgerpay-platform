@@ -27,8 +27,8 @@ final class CustomerResource extends JsonResource
             'uuid'       => $this->uuid,
             'name'       => $this->name,
             'email'      => $this->email,
-            'status'     => $this?->status?->value,
-            'created_at' => $this?->created_at?->toISOString(),
+            'status'     => $this->status?->value,
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }

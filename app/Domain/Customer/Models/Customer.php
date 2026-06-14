@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * Для внутренних связей используется числовой id,
  * а UUID выступает публичным идентификатором,
  * который безопасно отдавать во внешнее API.
+ *
+ * @property CustomerStatus $status
  */
 final class Customer extends Model
 {

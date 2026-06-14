@@ -31,7 +31,7 @@ final class TransactionResource extends JsonResource
             'currency'       => $this->currency,
             'failure_reason' => $this->failure_reason,
             'processed_at'   => $this->processed_at?->toISOString(),
-            'created_at'     => $this->created_at?->toISOString(),
+            'created_at'     => $this->created_at->toISOString(),
         ];
     }
 }

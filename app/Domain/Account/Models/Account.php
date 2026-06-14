@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * Счет принадлежит клиенту и хранит баланс в minor units,
  * например в копейках/центах, а не в рублях/долларах.
+ *
+ * @property AccountStatus $status
  */
 final class Account extends Model
 {
