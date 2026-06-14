@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - routes
+        - database/factories
+        - database/seeders
+
+    level: 5
+
+    parseModelCastsMethod: true
+
+    excludePaths:
+        - bootstrap/cache
+        - storage
+        - vendor
