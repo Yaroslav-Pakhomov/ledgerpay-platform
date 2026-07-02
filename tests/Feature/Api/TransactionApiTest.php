@@ -18,6 +18,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_can_deposit_to_account(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
 
         $response = $this->postJson('/api/transactions/deposit', [
@@ -47,6 +52,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_deposit_is_idempotent(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
 
         $first = $this->postJson('/api/transactions/deposit', [
@@ -130,6 +140,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_can_withdraw_from_account(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $this->depositToAccount($account, 5000, 'fund-for-withdraw');
 
@@ -177,6 +192,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_withdraw_is_idempotent(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $this->depositToAccount($account, 5000, 'fund-for-withdraw-idem');
 
@@ -204,6 +224,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_can_transfer_between_accounts(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $customer = $this->createCustomer();
         $source = $this->createAccount($customer, currency: 'USD');
         $target = $this->createAccount($customer, currency: 'USD');
@@ -275,6 +300,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_can_list_transactions(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $this->depositToAccount($account, 1000, 'list-deposit-001');
 
@@ -294,6 +324,11 @@ final class TransactionApiTest extends TestCase
 
     public function test_can_show_transaction_by_uuid(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $deposit = $this->depositToAccount($account, 1000, 'show-deposit-001');
         $transactionUuid = $deposit->json('data.uuid');

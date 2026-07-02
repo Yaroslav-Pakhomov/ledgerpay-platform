@@ -6,7 +6,9 @@ namespace App\Domain\Customer\Models;
 
 use App\Domain\Account\Models\Account;
 use App\Domain\Customer\Enums\CustomerStatus;
+use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -23,6 +25,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class Customer extends Model
 {
+    /**
+     * Подключает test factory для доменного агрегата Customer.
+     */
+    use HasFactory;
+
     /**
      * Подключает автоматическую генерацию UUID.
      */
@@ -75,6 +82,17 @@ final class Customer extends Model
     public function getRouteKeyName(): string
     {
         return 'uuid';
+    }
+
+    /**
+     * Связывает доменную модель с test factory.
+     *
+     * Модели в App\Domain\...\Models не резолвят factory автоматически,
+     * поэтому явно указываем infrastructure-слой (Database\Factories).
+     */
+    protected static function newFactory(): CustomerFactory
+    {
+        return CustomerFactory::new();
     }
 
     /**

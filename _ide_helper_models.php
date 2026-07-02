@@ -29,6 +29,7 @@ namespace App\Domain\Account\Models{
  * @property-read \App\Domain\Customer\Models\Customer $customer
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Domain\Ledger\Models\LedgerEntry> $ledgerEntries
  * @property-read int|null $ledger_entries_count
+ * @method static \Database\Factories\AccountFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Account newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Account newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Account query()
@@ -63,6 +64,7 @@ namespace App\Domain\Customer\Models{
  * @property \Illuminate\Support\Carbon $updated_at Время обновления
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Domain\Account\Models\Account> $accounts
  * @property-read int|null $accounts_count
+ * @method static \Database\Factories\CustomerFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Customer query()
@@ -148,6 +150,7 @@ namespace App\Domain\Transaction\Models{
  * @property \Illuminate\Support\Carbon $updated_at Время обновления
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Domain\Ledger\Models\LedgerEntry> $ledgerEntries
  * @property-read int|null $ledger_entries_count
+ * @method static \Database\Factories\TransactionFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Transaction newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Transaction newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Transaction query()

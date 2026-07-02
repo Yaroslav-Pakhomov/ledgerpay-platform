@@ -10,7 +10,9 @@ use App\Domain\Account\Exceptions\InactiveAccountException;
 use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Ledger\Models\LedgerEntry;
+use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,6 +27,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class Account extends Model
 {
+    /**
+     * Подключает test factory для доменного агрегата Account.
+     */
+    use HasFactory;
+
     /**
      * Подключает автоматическую генерацию UUID для модели.
      */
@@ -78,6 +85,17 @@ final class Account extends Model
     public function getRouteKeyName(): string
     {
         return 'uuid';
+    }
+
+    /**
+     * Связывает доменную модель с test factory.
+     *
+     * Модели в App\Domain\...\Models не резолвят factory автоматически,
+     * поэтому явно указываем infrastructure-слой (Database\Factories).
+     */
+    protected static function newFactory(): AccountFactory
+    {
+        return AccountFactory::new();
     }
 
     /**

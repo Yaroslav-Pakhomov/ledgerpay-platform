@@ -19,6 +19,11 @@ final class AccountApiTest extends TestCase
 
     public function test_can_create_account_for_active_customer(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $customer = $this->createCustomer();
         $data = [
             'customer_uuid' => $customer->uuid,
@@ -64,6 +69,11 @@ final class AccountApiTest extends TestCase
 
     public function test_can_show_account_by_uuid(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $customer = $this->createCustomer();
 
         $createResponse = $this->postJson('/api/accounts', [
@@ -82,6 +92,11 @@ final class AccountApiTest extends TestCase
 
     public function test_can_list_accounts(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $customer = $this->createCustomer();
         $account = $this->createAccount($customer, currency: 'USD');
 
@@ -100,6 +115,11 @@ final class AccountApiTest extends TestCase
 
     public function test_can_get_account_balance(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $this->depositToAccount($account, 2500, 'balance-deposit-001');
 
@@ -113,6 +133,11 @@ final class AccountApiTest extends TestCase
 
     public function test_can_get_account_ledger_after_deposit(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $account = $this->createAccount($this->createCustomer());
         $this->depositToAccount($account, 1500, 'ledger-deposit-001');
 

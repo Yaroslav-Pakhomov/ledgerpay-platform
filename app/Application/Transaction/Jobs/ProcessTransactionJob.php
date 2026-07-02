@@ -17,7 +17,15 @@ use Illuminate\Queue\SerializesModels;
 use Throwable;
 
 /**
- * Обработка доменных ошибок: InsufficientFundsException, InactiveAccountException, CurrencyMismatchException и SameAccountTransferException пробрасываются из TransactionProcessorService → job retry ×5 → failed() записывает failure_reason (например, "Недостаточно средств.").
+ * Infrastructure job для асинхронной обработки агрегата Transaction.
+ *
+ * Связывает application layer (TransactionService) с доменной обработкой
+ * в TransactionProcessorService. Job не содержит бизнес-логики —
+ * только загрузку агрегата, проверку статуса и делегирование в processor.
+ *
+ * Доменные ошибки (InsufficientFundsException, InactiveAccountException,
+ * CurrencyMismatchException, SameAccountTransferException) пробрасываются
+ * из processor → retry ×5 → failed() записывает failure_reason в агрегат.
  */
 final class ProcessTransactionJob implements ShouldQueue
 {
@@ -40,13 +48,19 @@ final class ProcessTransactionJob implements ShouldQueue
     /**
      * WithoutOverlapping защищает от параллельной обработки одной и той же transaction.
      *
-     * DB-level lockForUpdate остается главным механизмом консистентности баланса,
-     * а middleware снижает лишнюю конкуренцию на уровне очереди.
+     * DB-level lockForUpdate в TransactionProcessorService остается главным
+     * механизмом консистентности баланса, а middleware снижает лишнюю
+     * конкуренцию на уровне очереди:
+     *
+     * - releaseAfter(10) — отложить повторную попытку при overlap;
+     * - expireAfter(60) — снять блокировку, если worker упал без release.
      */
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('transaction:'.$this->transactionId),
+            (new WithoutOverlapping('transaction:'.$this->transactionId))
+                ->releaseAfter(10)
+                ->expireAfter(60),
         ];
     }
 
@@ -61,6 +75,10 @@ final class ProcessTransactionJob implements ShouldQueue
             throw new ModelNotFoundException('Транзакция не найдена.');
         }
 
+        /**
+         * Идемпотентность worker'а: уже завершенные или failed-транзакции
+         * не обрабатываются повторно (retry endpoint переводит Failed → Pending).
+         */
         if ($transaction->status === TransactionStatus::Completed) {
             return;
         }
@@ -72,6 +90,11 @@ final class ProcessTransactionJob implements ShouldQueue
         $processor->process($transaction);
     }
 
+    /**
+     * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
+     *
+     * failure_reason сохраняет доменное сообщение исключения для API и аудита.
+     */
     public function failed(Throwable $exception): void
     {
         $transaction = Transaction::query()->find($this->transactionId);

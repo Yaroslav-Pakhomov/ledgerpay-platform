@@ -16,6 +16,11 @@ final class CustomerApiTest extends TestCase
 
     public function test_can_create_customer(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $response = $this->postJson('/api/customers', [
             'name'  => 'Alice Morgan',
             'email' => 'alice@example.com',
@@ -54,6 +59,11 @@ final class CustomerApiTest extends TestCase
 
     public function test_can_list_customers(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         Customer::query()->create([
             'name'   => 'Alice Morgan',
             'email'  => 'alice@example.com',
@@ -68,6 +78,11 @@ final class CustomerApiTest extends TestCase
 
     public function test_can_show_customer_by_uuid(): void
     {
+        /**
+         * Для вывода ошибок при выполнении текущего теста
+         */
+        $this->withoutExceptionHandling();
+
         $customer = Customer::query()->create([
             'name'   => 'Alice Morgan',
             'email'  => 'alice@example.com',

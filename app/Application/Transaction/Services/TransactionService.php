@@ -8,11 +8,13 @@ use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
+use App\Application\Transaction\Results\TransactionCreationResult;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Application Service для создания и постановки транзакций в очередь.
@@ -27,6 +29,8 @@ final readonly class TransactionService
      *
      * Если транзакция с указанным Idempotency-Key уже существует,
      * возвращается ранее созданный результат без повторной обработки.
+     *
+     * @throws Throwable
      */
     public function deposit(CreateDepositData $data): Transaction
     {
@@ -54,22 +58,35 @@ final readonly class TransactionService
             ]);
         };
 
-        $transaction = $this->createTransactionOnce(
+        $result = $this->createTransactionOnce(
             $data->idempotencyKey,
             $callbackTransaction
         );
 
-        $this->dispatchIfPending($transaction);
+        $this->dispatchIfNewPending($result);
 
-        return $transaction->refresh();
+        return $result->transaction->refresh();
     }
 
     /**
      * Создает операцию списания денежных средств.
+     *
+     * Если транзакция с указанным Idempotency-Key уже существует,
+     * возвращается ранее созданный результат без повторной обработки.
+     *
+     * @throws Throwable
      */
     public function withdraw(CreateWithdrawalData $data): Transaction
     {
+        /**
+         * Создаем транзакцию в состоянии Pending.
+         * Проверка достаточности средств выполняется позже
+         * в TransactionProcessorService при обработке job.
+         */
         $callbackTransaction = function () use ($data): Transaction {
+            /**
+             * Получаем агрегат счета-источника по публичному UUID.
+             */
             $source = Account::query()
                 ->where('uuid', $data->sourceAccountUuid)
                 ->firstOrFail();
@@ -85,21 +102,31 @@ final readonly class TransactionService
             ]);
         };
 
-        $transaction = $this->createTransactionOnce(
+        $result = $this->createTransactionOnce(
             $data->idempotencyKey,
             $callbackTransaction
         );
 
-        $this->dispatchIfPending($transaction);
+        $this->dispatchIfNewPending($result);
 
-        return $transaction->refresh();
+        return $result->transaction->refresh();
     }
 
     /**
      * Создает операцию перевода между счетами.
+     *
+     * Если транзакция с указанным Idempotency-Key уже существует,
+     * возвращается ранее созданный результат без повторной обработки.
+     *
+     * @throws Throwable
      */
     public function transfer(CreateTransferData $data): Transaction
     {
+        /**
+         * Создаем транзакцию в состоянии Pending.
+         * Доменные инварианты перевода (активность счетов, валюта,
+         * запрет same-account transfer) проверяются в TransactionProcessorService.
+         */
         $callbackTransaction = function () use ($data): Transaction {
             /**
              * Получаем агрегаты обоих счетов,
@@ -124,24 +151,22 @@ final readonly class TransactionService
             ]);
         };
 
-        $existing = $this->findByIdempotencyKey($data->idempotencyKey);
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        $transaction = $this->createTransactionOnce(
+        $result = $this->createTransactionOnce(
             $data->idempotencyKey,
             $callbackTransaction
         );
 
-        $this->dispatchIfPending($transaction);
+        $this->dispatchIfNewPending($result);
 
-        return $transaction->refresh();
+        return $result->transaction->refresh();
     }
 
     /**
-     * Создает повторную операцию failed-транзакци.
+     * Повторно ставит failed-транзакцию в очередь на обработку.
+     *
+     * Application use case для ручного retry: переводит агрегат
+     * из Failed обратно в Pending и dispatch'ит job.
+     * Повторная обработка допустима только для failed-транзакций.
      */
     public function retry(string $transactionUuid): Transaction
     {
@@ -153,6 +178,10 @@ final readonly class TransactionService
             return $transaction;
         }
 
+        /**
+         * Сбрасываем статус агрегата перед повторной постановкой в очередь.
+         * failure_reason очищается, чтобы worker мог обработать транзакцию заново.
+         */
         $transaction->update([
             'status'         => TransactionStatus::Pending,
             'failure_reason' => null,
@@ -169,8 +198,10 @@ final readonly class TransactionService
      * Сначала смотрим существующую запись.
      * Потом создаем внутри DB transaction.
      * Unique index на idempotency_key остается финальной защитой от race condition.
+     *
+     * @throws Throwable
      */
-    private function createTransactionOnce(string $idempotencyKey, callable $callbackTransaction): Transaction
+    private function createTransactionOnce(string $idempotencyKey, callable $callbackTransaction): TransactionCreationResult
     {
         $existing = $this->findByIdempotencyKey($idempotencyKey);
 
@@ -180,31 +211,56 @@ final readonly class TransactionService
          * к повторному движению денежных средств.
          */
         if ($existing instanceof Transaction) {
-            return $existing;
+            return new TransactionCreationResult(
+                transaction: $existing,
+                created: false,
+            );
+
         }
 
-        return DB::transaction(function () use ($idempotencyKey, $callbackTransaction): Transaction {
+        return DB::transaction(function () use ($idempotencyKey, $callbackTransaction): TransactionCreationResult {
+            /**
+             * Пессимистическая блокировка под конкурентные idempotency-запросы.
+             * Вместе с unique index на idempotency_key гарантирует,
+             * что будет создан ровно один агрегат Transaction.
+             */
             $existing = Transaction::query()
                 ->where('idempotency_key', $idempotencyKey)
                 ->lockForUpdate()
                 ->first();
 
             if ($existing instanceof Transaction) {
-                return $existing;
+                return new TransactionCreationResult(
+                    transaction: $existing,
+                    created: false,
+                );
             }
 
-            return $callbackTransaction();
+            return new TransactionCreationResult(
+                transaction: $callbackTransaction(),
+                created: true,
+            );
         });
     }
 
-    private function dispatchIfPending(Transaction $transaction): void
+    /**
+     * Ставит в очередь обработку только что созданной pending-транзакции.
+     *
+     * При повторном idempotency-запросе ($result->created === false)
+     * job не dispatch'ится повторно — иначе одна и та же транзакция
+     * могла бы обрабатываться несколько раз, пока status === Pending.
+     */
+    private function dispatchIfNewPending(TransactionCreationResult $result): void
     {
-
-        if ($transaction->status !== TransactionStatus::Pending) {
+        if (!$result->created) {
             return;
         }
 
-        ProcessTransactionJob::dispatch($transaction->id);
+        if ($result->transaction->status !== TransactionStatus::Pending) {
+            return;
+        }
+
+        ProcessTransactionJob::dispatch($result->transaction->id);
     }
 
     /**

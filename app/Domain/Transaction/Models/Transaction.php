@@ -8,7 +8,9 @@ use App\Domain\Account\Models\Account;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
+use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +35,11 @@ use Illuminate\Support\Carbon;
  */
 final class Transaction extends Model
 {
+    /**
+     * Подключает test factory для доменного агрегата Transaction.
+     */
+    use HasFactory;
+
     /**
      * Подключает автоматическую генерацию UUID.
      */
@@ -89,6 +96,17 @@ final class Transaction extends Model
     public function getRouteKeyName(): string
     {
         return 'uuid';
+    }
+
+    /**
+     * Связывает доменную модель с test factory.
+     *
+     * Модели в App\Domain\...\Models не резолвят factory автоматически,
+     * поэтому явно указываем infrastructure-слой (Database\Factories).
+     */
+    protected static function newFactory(): TransactionFactory
+    {
+        return TransactionFactory::new();
     }
 
     /**
