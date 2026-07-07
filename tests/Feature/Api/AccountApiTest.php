@@ -61,10 +61,13 @@ final class AccountApiTest extends TestCase
             'currency'      => 'RUB',
         ];
 
-        $response = $this->post(route('api.accounts.store'), $data);
+        $response = $this->postJson(route('api.accounts.store'), $data);
 
-        $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Не удается открыть счет для неактивного клиента.');
+        $response->assertConflict()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Domain rule violation')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('detail', 'Не удается открыть счет для неактивного клиента.');
     }
 
     public function test_can_show_account_by_uuid(): void

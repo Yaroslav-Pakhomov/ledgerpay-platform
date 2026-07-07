@@ -110,8 +110,11 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('deposit-inactive-001'));
 
-        $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Счет неактивен.');
+        $response->assertConflict()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Domain rule violation')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('detail', 'Счет неактивен.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -129,8 +132,11 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'EUR',
         ], $this->idempotencyHeaders('deposit-currency-001'));
 
-        $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Валюта операции не совпадает с валютой счета.');
+        $response->assertConflict()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Domain rule violation')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('detail', 'Валюта операции не совпадает с валютой счета.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -181,8 +187,11 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('withdraw-insufficient-001'));
 
-        $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Недостаточно средств.');
+        $response->assertConflict()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Domain rule violation')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('detail', 'Недостаточно средств.');
 
         $this->assertDatabaseHas('accounts', [
             'id'      => $account->id,
@@ -276,8 +285,11 @@ final class TransactionApiTest extends TestCase
             'currency'            => 'USD',
         ], $this->idempotencyHeaders('transfer-insufficient-001'));
 
-        $response->assertUnprocessable()
-            ->assertJsonPath('message', 'Недостаточно средств.');
+        $response->assertConflict()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Domain rule violation')
+            ->assertJsonPath('status', 409)
+            ->assertJsonPath('detail', 'Недостаточно средств.');
 
         $this->assertDatabaseHas('accounts', ['id' => $source->id, 'balance' => 0]);
         $this->assertDatabaseHas('accounts', ['id' => $target->id, 'balance' => 0]);

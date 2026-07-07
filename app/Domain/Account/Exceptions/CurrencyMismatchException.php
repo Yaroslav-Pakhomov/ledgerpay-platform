@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Account\Exceptions;
 
+use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use DomainException;
 
 /**
@@ -11,7 +12,7 @@ use DomainException;
  *
  * Валюта операции не совпадает с валютой счета
  */
-final class CurrencyMismatchException extends DomainException
+final class CurrencyMismatchException extends DomainException implements IDomainRuleViolation
 {
     public function __construct()
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Customer\Exceptions;
 
+use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use DomainException;
 
 /**
@@ -11,7 +12,7 @@ use DomainException;
  *
  * Клиент неактивен
  */
-final class InactiveCustomerException extends DomainException
+final class InactiveCustomerException extends DomainException implements IDomainRuleViolation
 {
     public function __construct()
     {

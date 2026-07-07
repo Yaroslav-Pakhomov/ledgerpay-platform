@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Transaction\Exceptions;
 
+use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use DomainException;
 
 /**
@@ -11,7 +12,7 @@ use DomainException;
  *
  * Попытка перевода на тот же счет
  */
-final class SameAccountTransferException extends DomainException
+final class SameAccountTransferException extends DomainException implements IDomainRuleViolation
 {
     public function __construct()
     {

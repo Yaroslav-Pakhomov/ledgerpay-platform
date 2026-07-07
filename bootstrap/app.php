@@ -1,11 +1,22 @@
 <?php
 
+use App\Domain\Shared\Exceptions\IDomainRuleViolation;
+use App\Http\Middleware\ApiRequestLoggingMiddleware;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequestIdMiddleware;
+use App\Support\Http\ProblemDetails;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,15 +31,284 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        //
+        $middleware->api(append: [
+            RequestIdMiddleware::class,
+            ApiRequestLoggingMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Для бизнес-логики ("недостаточно денег" и т.д.)
-        $exceptions->render(function (DomainException $exception, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'message' => $exception->getMessage(),
-                ], 422);
+
+        /**
+         * Некорректные входящие данные - 422
+         *
+         * Обрабатывает ошибки валидации входящих данных.
+         *
+         *  Например:
+         *  - не передано обязательное поле;
+         *  - строка передана вместо числа;
+         *  - email имеет неправильный формат.
+         *
+         *  Laravel выбрасывает ValidationException, когда данные
+         *  не проходят правила валидации FormRequest или Validator.
+         */
+        $exceptions->render(function (ValidationException $exception, Request $request) {
+            /*
+             * Обработчик применяется только тогда, когда клиент ожидает JSON.
+             *
+             * Обычно это запросы с заголовком: "Accept: application/json"
+             *
+             * Если клиент ожидает HTML, возвращаем null.
+             * Это означает: Laravel должен обработать исключение стандартным способом,
+             * например вернуть пользователя назад с ошибками в сессии.
+             */
+            if (!$request->expectsJson()) {
+                return null;
             }
+
+            /*
+             * Формируем стандартизированный ответ с кодом 422.
+             *
+             * $exception->errors() возвращает ошибки по полям:
+             *
+             * [
+             *     'email' => ['The email field is required.'],
+             *     'amount' => ['The amount must be a number.'],
+             * ]
+             */
+            return ProblemDetails::validation(
+                request: $request,
+                errors: $exception->errors(),
+            );
+        });
+
+        /**
+         * Запись в базе не найдена - 404
+         *
+         * Обрабатывает ситуацию, когда запись Eloquent не найдена.
+         *
+         *  Такое исключение обычно возникает при использовании:
+         *
+         *  Model::findOrFail($id);
+         *  Model::firstOrFail();
+         *
+         *  Или при автоматическом Route Model Binding.
+         */
+        $exceptions->render(function (ModelNotFoundException $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Возвращаем HTTP 404.
+             *
+             * Реальное сообщение ModelNotFoundException наружу не передаётся,
+             * потому что оно может содержать имя PHP-модели и другие
+             * внутренние детали приложения.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Resource not found',
+                detail: 'The requested resource does not exist.',
+                status: Response::HTTP_NOT_FOUND,
+                type: 'https://ledgerpay.local/problems/resource-not-found',
+            );
+        });
+
+        /**
+         * Маршрут или HTTP-ресурс не найден — 404
+         *
+         * Обрабатывает HTTP-исключение NotFoundHttpException.
+         *
+         * Такое исключение обычно возникает, когда:
+         *
+         * - запрошенный маршрут не зарегистрирован;
+         * - URL указан неверно;
+         * - вызывается abort(404);
+         * - Laravel или Symfony не удалось найти запрашиваемый HTTP-ресурс.
+         *
+         * В отличие от ModelNotFoundException, это исключение относится
+         * не обязательно к записи в базе данных, а к HTTP-уровню приложения.
+         */
+        $exceptions->render(function (NotFoundHttpException $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Возвращаем стандартный JSON-ответ с HTTP-кодом 404.
+             *
+             * Реальное сообщение NotFoundHttpException не передаётся клиенту,
+             * поскольку оно может содержать внутреннюю информацию о маршрутах
+             * или структуре приложения.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Resource not found',
+                detail: 'The requested resource does not exist.',
+                status: Response::HTTP_NOT_FOUND,
+                type: 'https://ledgerpay.local/problems/resource-not-found',
+            );
+        });
+
+        /**
+         * Нарушено бизнес-правило - 409
+         *
+         * Обрабатывает нарушения бизнес-правил приложения.
+         *
+         *  IDomainRuleViolation — общий интерфейс для доменных исключений.
+         *
+         *  Его могут реализовывать, например:
+         *
+         *  - InsufficientFundsException;
+         *  - CurrencyMismatchException;
+         *  - InactiveAccountException;
+         *  - SameAccountTransferException.
+         *
+         *  Благодаря интерфейсу не нужно регистрировать отдельный обработчик
+         *  для каждого доменного исключения.
+         */
+        $exceptions->render(function (IDomainRuleViolation $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Возвращается 409 Conflict.
+             *
+             * Это означает, что запрос технически корректный,
+             * но его невозможно выполнить из-за текущего состояния системы
+             * или нарушения бизнес-правила.
+             *
+             * Например:
+             * - недостаточно средств;
+             * - счёт заблокирован;
+             * - валюты счетов не совпадают.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Domain rule violation',
+
+                /*
+                 * Клиенту передаётся сообщение конкретного
+                 * доменного исключения.
+                 *
+                 * Поэтому сообщения таких исключений должны быть безопасными
+                 * и не содержать технических подробностей.
+                 */
+                detail: $exception->getMessage(),
+
+                status: Response::HTTP_CONFLICT,
+                type: 'https://ledgerpay.local/problems/domain-rule-violation',
+            );
+        });
+
+        /**
+         * Пользователь не авторизован - 401
+         *
+         * Обрабатывает запросы от неавторизованного пользователя.
+         *
+         *  AuthenticationException возникает, когда защищённый маршрут
+         *  требует авторизации, но пользователь:
+         *
+         *  - не передал токен;
+         *  - передал недействительный токен;
+         *  - не имеет активной аутентифицированной сессии.
+         */
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Для API возвращаем JSON с кодом 401 вместо HTML-редиректа
+             * на страницу входа.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Unauthenticated',
+                detail: 'Authentication is required.',
+                status: Response::HTTP_UNAUTHORIZED,
+                type: 'https://ledgerpay.local/problems/unauthenticated',
+            );
+        });
+
+        /**
+         * Все остальные ошибки - Исходный HTTP-код или 500
+         *
+         * Универсальный обработчик всех остальных исключений.
+         *
+         *  Throwable является базовым типом для:
+         *
+         *  - Exception;
+         *  - Error;
+         *  - TypeError;
+         *  - RuntimeException;
+         *  - HTTP-исключений;
+         *  - других необработанных ошибок.
+         *
+         *  Этот обработчик обязательно должен находиться последним,
+         *  иначе он может перехватить исключения раньше специализированных
+         *  обработчиков выше.
+         */
+        $exceptions->render(function (Throwable $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Если исключение является HTTP-исключением,
+             * сохраняем его исходный HTTP-статус.
+             *
+             * Например:
+             * - 403 Forbidden;
+             * - 404 Not Found;
+             * - 405 Method Not Allowed;
+             * - 429 Too Many Requests.
+             *
+             * Если это обычное PHP-исключение, возвращаем 500.
+             */
+            $status = $exception instanceof HttpExceptionInterface
+                ? $exception->getStatusCode()
+                : Response::HTTP_INTERNAL_SERVER_ERROR;
+
+            /*
+             * Записываем настоящую ошибку в серверный лог.
+             *
+             * Клиенту технические подробности не показываются,
+             * но разработчик сможет найти исключение по request_id.
+             */
+            Log::error('Unhandled API exception.', [
+                'request_id'      => $request->headers->get('X-Request-Id'),
+                'exception_class' => $exception::class,
+                'message'         => $exception->getMessage(),
+                'path'            => $request->path(),
+                'method'          => $request->method(),
+            ]);
+
+            /*
+             * Для ошибок 500 и выше скрываем настоящее сообщение исключения.
+             *
+             * Например, клиент не должен увидеть:
+             *
+             * - SQL-запрос;
+             * - пароль подключения;
+             * - путь к файлу;
+             * - stack trace;
+             * - внутреннее имя класса.
+             *
+             * Для HTTP-ошибок 4xx текущее сообщение исключения передаётся клиенту.
+             */
+            return ProblemDetails::make(
+                request: $request,
+
+                title: $status >= 500 ? 'Internal server error' : 'HTTP error',
+
+                detail: $status >= 500
+                    ? 'An unexpected error occurred.'
+                    : $exception->getMessage(),
+
+                status: $status,
+                type: 'https://ledgerpay.local/problems/http-error',
+            );
         });
     })->create();

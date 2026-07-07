@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Account\Exceptions;
 
+use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use DomainException;
 
 /**
@@ -11,7 +12,7 @@ use DomainException;
  *
  * Недостаточно средств
  */
-final class InsufficientFundsException extends DomainException
+final class InsufficientFundsException extends DomainException implements IDomainRuleViolation
 {
     public function __construct()
     {

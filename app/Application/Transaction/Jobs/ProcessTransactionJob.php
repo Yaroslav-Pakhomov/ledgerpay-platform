@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -69,6 +70,10 @@ final class ProcessTransactionJob implements ShouldQueue
      */
     public function handle(TransactionProcessorService $processor): void
     {
+        Log::info('Transaction processing started.', [
+            'transaction_id' => $this->transactionId,
+        ]);
+
         $transaction = Transaction::query()->find($this->transactionId);
 
         if (!$transaction instanceof Transaction) {
@@ -88,6 +93,10 @@ final class ProcessTransactionJob implements ShouldQueue
         }
 
         $processor->process($transaction);
+
+        Log::info('Transaction processing completed.', [
+            'transaction_id' => $this->transactionId,
+        ]);
     }
 
     /**
@@ -102,6 +111,12 @@ final class ProcessTransactionJob implements ShouldQueue
         if (!$transaction instanceof Transaction) {
             return;
         }
+
+        Log::error('Transaction processing failed.', [
+            'transaction_id'  => $this->transactionId,
+            'exception_class' => $exception::class,
+            'message'         => $exception->getMessage(),
+        ]);
 
         $transaction->update([
             'status'         => TransactionStatus::Failed,
