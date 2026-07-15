@@ -24,6 +24,7 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -58,6 +59,7 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
 
         $first = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -86,6 +88,7 @@ final class TransactionApiTest extends TestCase
     public function test_deposit_requires_idempotency_key(): void
     {
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -103,6 +106,7 @@ final class TransactionApiTest extends TestCase
             $this->createCustomer(),
             status: AccountStatus::Blocked,
         );
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -125,6 +129,7 @@ final class TransactionApiTest extends TestCase
     public function test_deposit_fails_for_currency_mismatch(): void
     {
         $account = $this->createAccount($this->createCustomer(), currency: 'USD');
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -152,6 +157,8 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
+
         $this->depositToAccount($account, 5000, 'fund-for-withdraw');
 
         $response = $this->postJson('/api/transactions/withdraw', [
@@ -180,6 +187,7 @@ final class TransactionApiTest extends TestCase
     public function test_withdraw_fails_when_insufficient_funds(): void
     {
         $account = $this->createAccount($this->createCustomer(), balance: 100);
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/withdraw', [
             'source_account_uuid' => $account->uuid,
@@ -207,6 +215,8 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
+
         $this->depositToAccount($account, 5000, 'fund-for-withdraw-idem');
 
         $first = $this->postJson('/api/transactions/withdraw', [
@@ -241,6 +251,8 @@ final class TransactionApiTest extends TestCase
         $customer = $this->createCustomer();
         $source = $this->createAccount($customer, currency: 'USD');
         $target = $this->createAccount($customer, currency: 'USD');
+        $this->actingAsCustomerFor($source);
+
         $this->depositToAccount($source, 5000, 'fund-for-transfer');
 
         $response = $this->postJson('/api/transactions/transfer', [
@@ -278,6 +290,8 @@ final class TransactionApiTest extends TestCase
         $source = $this->createAccount($customer);
         $target = $this->createAccount($customer);
 
+        $this->actingAsCustomerFor($source);
+
         $response = $this->postJson('/api/transactions/transfer', [
             'source_account_uuid' => $source->uuid,
             'target_account_uuid' => $target->uuid,
@@ -298,6 +312,7 @@ final class TransactionApiTest extends TestCase
     public function test_transfer_validates_same_account(): void
     {
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/transfer', [
             'source_account_uuid' => $account->uuid,
@@ -318,8 +333,10 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
         $this->depositToAccount($account, 1000, 'list-deposit-001');
 
+        $this->actingAsBackoffice();
         $response = $this->getJson('/api/transactions');
 
         $response->assertOk()
@@ -342,9 +359,12 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
+
         $deposit = $this->depositToAccount($account, 1000, 'show-deposit-001');
         $transactionUuid = $deposit->json('data.uuid');
 
+        $this->actingAsBackoffice();
         $response = $this->getJson('/api/transactions/'.$transactionUuid);
 
         $response->assertOk()
@@ -356,6 +376,8 @@ final class TransactionApiTest extends TestCase
 
     public function test_returns_404_for_unknown_transaction(): void
     {
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/transactions/'.Str::uuid()->toString());
 
         $response->assertNotFound();

@@ -6,6 +6,7 @@ namespace Tests\Feature\Api;
 
 use App\Domain\Account\Enums\AccountStatus;
 use App\Domain\Account\Models\Account;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\Feature\Api\Concerns\CreatesApiFixtures;
@@ -20,7 +21,7 @@ class ApiErrorHandlingTest extends TestCase
     {
         Queue::fake();
 
-        $response = $this->postJson('/api/transactions/deposit', [], [
+        $response = $this->actingAs(User::factory()->create())->postJson('/api/transactions/deposit', [], [
             'X-Request-Id' => 'test-request-id-001',
         ]);
 
@@ -43,7 +44,7 @@ class ApiErrorHandlingTest extends TestCase
 
     public function test_not_found_errors_are_returned_as_problem_details(): void
     {
-        $response = $this->getJson('/api/accounts/00000000-0000-0000-0000-000000000000', [
+        $response = $this->actingAs(User::factory()->create())->getJson('/api/accounts/00000000-0000-0000-0000-000000000000', [
             'X-Request-Id' => 'test-request-id-404',
         ]);
 
@@ -58,6 +59,7 @@ class ApiErrorHandlingTest extends TestCase
     public function test_request_id_is_generated_when_header_is_missing(): void
     {
         $account = Account::factory()->create();
+        $this->actingAsCustomerFor($account);
 
         $response = $this->getJson('/api/accounts/'.$account->uuid);
 
@@ -73,7 +75,7 @@ class ApiErrorHandlingTest extends TestCase
             status: AccountStatus::Blocked,
         );
 
-        $response = $this->postJson('/api/transactions/deposit', [
+        $response = $this->actingAs(User::factory()->create())->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
             'amount'              => 1000,
             'currency'            => 'USD',

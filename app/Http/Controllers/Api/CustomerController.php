@@ -12,7 +12,7 @@ use App\Http\Requests\Customer\StoreCustomerRequest;
 use App\Http\Resources\Customer\CustomerResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
 // use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
@@ -20,6 +20,8 @@ final class CustomerController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
+        $this->authorize('viewAny', Customer::class);
+
         $customers = Customer::query()
             ->latest()
             ->paginate(20);
@@ -31,6 +33,8 @@ final class CustomerController extends Controller
         StoreCustomerRequest $request,
         CustomerService $service,
     ): JsonResponse {
+        $this->authorize('create', Customer::class);
+
         $customer = $service->create(
             new CreateCustomerData(
                 name: $request->string('name')->toString(),
@@ -40,7 +44,7 @@ final class CustomerController extends Controller
 
         return (new CustomerResource($customer))
             ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+            ->setStatusCode(ResponseAlias::HTTP_CREATED);
     }
 
     public function show(string $uuid): CustomerResource
@@ -48,6 +52,8 @@ final class CustomerController extends Controller
         $customer = Customer::query()
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        $this->authorize('view', $customer);
 
         return new CustomerResource($customer);
     }

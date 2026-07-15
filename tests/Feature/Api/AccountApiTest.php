@@ -29,6 +29,7 @@ final class AccountApiTest extends TestCase
             'customer_uuid' => $customer->uuid,
             'currency'      => 'rub',
         ];
+        $this->actingAsBackoffice();
 
         $response = $this->post(route('api.accounts.store'), $data);
 
@@ -61,6 +62,8 @@ final class AccountApiTest extends TestCase
             'currency'      => 'RUB',
         ];
 
+        $this->actingAsBackoffice();
+
         $response = $this->postJson(route('api.accounts.store'), $data);
 
         $response->assertConflict()
@@ -78,6 +81,8 @@ final class AccountApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $customer = $this->createCustomer();
+
+        $this->actingAsBackoffice();
 
         $createResponse = $this->postJson('/api/accounts', [
             'customer_uuid' => $customer->uuid,
@@ -103,6 +108,8 @@ final class AccountApiTest extends TestCase
         $customer = $this->createCustomer();
         $account = $this->createAccount($customer, currency: 'USD');
 
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/accounts');
 
         $response->assertOk()
@@ -124,7 +131,11 @@ final class AccountApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
+
         $this->depositToAccount($account, 2500, 'balance-deposit-001');
+
+        $this->actingAsBackoffice();
 
         $response = $this->getJson('/api/accounts/'.$account->uuid.'/balance');
 
@@ -142,7 +153,11 @@ final class AccountApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $account = $this->createAccount($this->createCustomer());
+        $this->actingAsCustomerFor($account);
+
         $this->depositToAccount($account, 1500, 'ledger-deposit-001');
+
+        $this->actingAsBackoffice();
 
         $response = $this->getJson('/api/accounts/'.$account->uuid.'/ledger');
 
@@ -161,6 +176,8 @@ final class AccountApiTest extends TestCase
 
     public function test_returns_404_for_unknown_account(): void
     {
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/accounts/'.Str::uuid()->toString());
 
         $response->assertNotFound();
@@ -168,9 +185,11 @@ final class AccountApiTest extends TestCase
 
     public function test_validates_store_account_request(): void
     {
+        $this->actingAsBackoffice();
+
         $response = $this->postJson('/api/accounts', []);
 
         $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['customer_uuid', 'currency']);
+            ->assertJsonValidationErrors(['currency']);
     }
 }

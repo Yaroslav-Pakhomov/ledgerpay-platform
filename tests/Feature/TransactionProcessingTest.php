@@ -11,8 +11,10 @@ use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
 use App\Domain\Transaction\Models\Transaction;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Tests\Feature\Api\Concerns\CreatesApiFixtures;
 use Tests\TestCase;
 use Throwable;
 
@@ -29,6 +31,7 @@ use Throwable;
  */
 final class TransactionProcessingTest extends TestCase
 {
+    use CreatesApiFixtures;
     use RefreshDatabase;
 
     public function test_deposit_creates_pending_transaction_and_dispatches_job(): void
@@ -39,6 +42,7 @@ final class TransactionProcessingTest extends TestCase
             ->currency('USD')
             ->withBalance(0)
             ->create();
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson(
             uri: '/api/transactions/deposit',
@@ -77,6 +81,7 @@ final class TransactionProcessingTest extends TestCase
             ->currency('USD')
             ->withBalance(0)
             ->create();
+        $this->actingAsCustomerFor($account);
 
         $payload = [
             'target_account_uuid' => $account->uuid,
@@ -113,6 +118,7 @@ final class TransactionProcessingTest extends TestCase
             ->currency('USD')
             ->withBalance(0)
             ->create();
+        $this->actingAsCustomerFor($account);
 
         $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -154,6 +160,7 @@ final class TransactionProcessingTest extends TestCase
             ->currency('USD')
             ->withBalance(100_000)
             ->create();
+        $this->actingAsCustomerFor($account);
 
         $this->postJson('/api/transactions/withdraw', [
             'source_account_uuid' => $account->uuid,
@@ -198,7 +205,7 @@ final class TransactionProcessingTest extends TestCase
             ->withBalance(5_000)
             ->create();
 
-        $this->postJson('/api/transactions/transfer', [
+        $this->actingAs(User::factory()->create())->postJson('/api/transactions/transfer', [
             'source_account_uuid' => $source->uuid,
             'target_account_uuid' => $target->uuid,
             'amount'              => 25_000,
@@ -248,6 +255,7 @@ final class TransactionProcessingTest extends TestCase
             ->currency('USD')
             ->withBalance(1_000)
             ->create();
+        $this->actingAsCustomerFor($account);
 
         $this->postJson('/api/transactions/withdraw', [
             'source_account_uuid' => $account->uuid,
@@ -283,6 +291,7 @@ final class TransactionProcessingTest extends TestCase
         Queue::fake();
 
         $account = Account::factory()->create();
+        $this->actingAsCustomerFor($account);
 
         $response = $this->postJson('/api/transactions/deposit', [
             'target_account_uuid' => $account->uuid,

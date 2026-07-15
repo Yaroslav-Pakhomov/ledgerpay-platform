@@ -8,10 +8,12 @@ use App\Domain\Customer\Enums\CustomerStatus;
 use App\Domain\Customer\Models\Customer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Feature\Api\Concerns\CreatesApiFixtures;
 use Tests\TestCase;
 
 final class CustomerApiTest extends TestCase
 {
+    use CreatesApiFixtures;
     use RefreshDatabase;
 
     public function test_can_create_customer(): void
@@ -20,6 +22,8 @@ final class CustomerApiTest extends TestCase
          * Для вывода ошибок при выполнении текущего теста
          */
         $this->withoutExceptionHandling();
+
+        $this->actingAsBackoffice();
 
         $response = $this->postJson('/api/customers', [
             'name'  => 'Alice Morgan',
@@ -36,7 +40,7 @@ final class CustomerApiTest extends TestCase
 
         $this->assertDatabaseHas('customers', [
             'email'  => 'alice@example.com',
-            'status' => CustomerStatus::Active->value,
+            'status' => CustomerStatus::Active,
         ]);
     }
 
@@ -47,6 +51,8 @@ final class CustomerApiTest extends TestCase
             'email'  => 'alice@example.com',
             'status' => CustomerStatus::Active,
         ]);
+
+        $this->actingAsBackoffice();
 
         $response = $this->postJson('/api/customers', [
             'name'  => 'Alice Morgan',
@@ -70,6 +76,8 @@ final class CustomerApiTest extends TestCase
             'status' => CustomerStatus::Active,
         ]);
 
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/customers');
 
         $response->assertOk()
@@ -89,6 +97,8 @@ final class CustomerApiTest extends TestCase
             'status' => CustomerStatus::Active,
         ]);
 
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/customers/'.$customer->uuid);
 
         $response->assertOk()
@@ -98,6 +108,8 @@ final class CustomerApiTest extends TestCase
 
     public function test_returns_404_for_unknown_customer(): void
     {
+        $this->actingAsBackoffice();
+
         $response = $this->getJson('/api/customers/'.Str::uuid()->toString());
 
         $response->assertNotFound();
@@ -105,6 +117,8 @@ final class CustomerApiTest extends TestCase
 
     public function test_validates_store_customer_request(): void
     {
+        $this->actingAsBackoffice();
+
         $response = $this->postJson('/api/customers', []);
 
         $response->assertUnprocessable()

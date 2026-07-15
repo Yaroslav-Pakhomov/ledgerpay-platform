@@ -8,6 +8,7 @@ use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
 use App\Application\Transaction\Services\TransactionService;
+use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Transaction\DepositRequest;
@@ -15,6 +16,7 @@ use App\Http\Requests\Transaction\TransferRequest;
 use App\Http\Requests\Transaction\WithdrawRequest;
 use App\Http\Resources\Transaction\TransactionResource;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Throwable;
 
 /**
  * API-контроллер для работы с транзакциями.
@@ -31,6 +33,8 @@ final class TransactionController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
+        $this->authorize('viewAny', Transaction::class);
+
         $transactions = Transaction::query()
             ->with(['sourceAccount', 'targetAccount'])
             ->latest()
@@ -44,11 +48,17 @@ final class TransactionController extends Controller
      *
      * Данные из запроса упаковываются в DTO
      * и передаются в TransactionService.
+     *
+     * @throws Throwable
      */
     public function deposit(
         DepositRequest $request,
         TransactionService $service,
     ): TransactionResource {
+        $targetAccount = Account::query()->where('uuid', $request->string('target_account_uuid'))->firstOrFail();
+
+        $this->authorize('view', $targetAccount);
+
         $transaction = $service->deposit(
             new CreateDepositData(
                 targetAccountUuid: $request->string('target_account_uuid')->toString(),
@@ -68,11 +78,17 @@ final class TransactionController extends Controller
      *
      * Данные из запроса упаковываются в DTO
      * и передаются в TransactionService.
+     *
+     * @throws Throwable
      */
     public function withdraw(
         WithdrawRequest $request,
         TransactionService $service,
     ): TransactionResource {
+        $sourceAccount = Account::query()->where('uuid', $request->string('source_account_uuid'))->firstOrFail();
+
+        $this->authorize('view', $sourceAccount);
+
         $transaction = $service->withdraw(
             new CreateWithdrawalData(
                 sourceAccountUuid: $request->string('source_account_uuid')->toString(),
@@ -92,11 +108,19 @@ final class TransactionController extends Controller
      *
      * Данные из запроса упаковываются в DTO
      * и передаются в TransactionService.
+     *
+     * @throws Throwable
      */
     public function transfer(
         TransferRequest $request,
         TransactionService $service,
     ): TransactionResource {
+        $sourceAccount = Account::query()->where('uuid', $request->string('source_account_uuid'))->firstOrFail();
+        $targetAccount = Account::query()->where('uuid', $request->string('target_account_uuid'))->firstOrFail();
+
+        $this->authorize('view', $sourceAccount);
+        $this->authorize('view', $targetAccount);
+
         $transaction = $service->transfer(
             new CreateTransferData(
                 sourceAccountUuid: $request->string('source_account_uuid')->toString(),
@@ -119,6 +143,9 @@ final class TransactionController extends Controller
         string $uuid,
         TransactionService $service,
     ): TransactionResource {
+        $transaction = Transaction::query()->where('uuid', $uuid)->firstOrFail();
+        $this->authorize('retry', $transaction);
+
         $transaction = $service->retry($uuid);
 
         return new TransactionResource(
@@ -140,6 +167,8 @@ final class TransactionController extends Controller
             ->with(['sourceAccount', 'targetAccount', 'ledgerEntries'])
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        $this->authorize('view', $transaction);
 
         return TransactionResource::make($transaction)->resolve();
     }

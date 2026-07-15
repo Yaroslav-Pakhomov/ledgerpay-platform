@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Application\Account\DTO\CreateAccountData;
 use App\Application\Account\Services\AccountService;
 use App\Domain\Account\Models\Account;
+use App\Domain\Customer\Models\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreAccountRequest;
 use App\Http\Resources\Account\AccountResource;
@@ -19,6 +20,8 @@ final class AccountController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
+        $this->authorize('viewAny', Account::class);
+
         $accounts = Account::query()
             ->with('customer')
             ->latest()
@@ -31,9 +34,23 @@ final class AccountController extends Controller
         StoreAccountRequest $request,
         AccountService $service,
     ): JsonResponse {
+        $this->authorize('create', Account::class);
+
+        $user = $request->user();
+
+        if ($user->isBackOffice()) {
+            $customer = Customer::query()->where('uuid', $request->string('customer_uuid')->toString())->firstOrFail();
+        } else {
+            $customer = $user->customer;
+        }
+
+        if (!$customer instanceof Customer) {
+            abort(ResponseAlias::HTTP_UNPROCESSABLE_ENTITY, 'Customer not found.');
+        }
+
         $account = $service->create(
             new CreateAccountData(
-                customerUuid: $request->string('customer_uuid')->toString(),
+                customerUuid: $customer->uuid,
                 currency: $request->string('currency')->toString(),
             )
         );
@@ -50,6 +67,8 @@ final class AccountController extends Controller
             ->where('uuid', $uuid)
             ->firstOrFail();
 
+        $this->authorize('view', $account);
+
         return new AccountResource($account);
     }
 
@@ -58,6 +77,7 @@ final class AccountController extends Controller
         $account = Account::query()
             ->where('uuid', $uuid)
             ->firstOrFail();
+        $this->authorize('view', $account);
 
         return response()->json([
             'account_uuid' => $account->uuid,
@@ -71,6 +91,7 @@ final class AccountController extends Controller
         $account = Account::query()
             ->where('uuid', $uuid)
             ->firstOrFail();
+        $this->authorize('view', $account);
 
         $entries = $account->ledgerEntries()
             ->with(['transaction', 'account'])

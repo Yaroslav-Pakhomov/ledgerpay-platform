@@ -16,8 +16,8 @@ final class StoreAccountRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_uuid' => ['required', 'uuid', 'exists:customers,uuid'],
-            'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
+            'customer_uuid' => ['nullable', 'uuid', 'exists:customers,uuid'],
+            'currency'      => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
         ];
     }
 }

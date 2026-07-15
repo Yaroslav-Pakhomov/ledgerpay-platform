@@ -3,62 +3,75 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Route::get('/user', function (Request $request) {
+//     return $request->user();
+// })->middleware('auth:sanctum');
 
-// Клиенты
-Route::controller(CustomerController::class)->prefix('customers')->name('api.customers.')->group(function (): void {
-    // Получение всех клиентов
-    Route::get('/', 'index')->name('index');
+Route::prefix('auth')->name('api.auth.')->group(function (): void {
+    Route::post('/register', [AuthController::class, 'register'])->name('register');
+    Route::post('/login', [AuthController::class, 'login'])->name('login');
 
-    // Создание клиента
-    Route::post('/', 'store')->name('store');
-
-    // Получение клиента
-    Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/me', [AuthController::class, 'me'])->name('me');
+        Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    });
 });
 
-// Счета
-Route::controller(AccountController::class)->prefix('accounts')->name('api.accounts.')->group(function (): void {
-    // Получение всех счетов
-    Route::get('/', 'index')->name('index');
+Route::middleware('auth:sanctum')->group(function (): void {
+    // Клиенты
+    Route::controller(CustomerController::class)->prefix('customers')->name('api.customers.')->group(function (): void {
+        // Получение всех клиентов
+        Route::get('/', 'index')->name('index');
 
-    // Создание счёта
-    Route::post('/', 'store')->name('store');
+        // Создание клиента
+        Route::post('/', 'store')->name('store');
 
-    // Получение счёта
-    Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
+        // Получение клиента
+        Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
+    });
 
-    // Получение баланса по счёту
-    Route::get('/{uuid}/balance', 'balance')->whereUuid('uuid')->name('balance');
+    // Счета
+    Route::controller(AccountController::class)->prefix('accounts')->name('api.accounts.')->group(function (): void {
+        // Получение всех счетов
+        Route::get('/', 'index')->name('index');
 
-    // Получение выписки по счёту
-    Route::get('/{uuid}/ledger', 'ledger')->whereUuid('uuid')->name('ledger');
-});
+        // Создание счёта
+        Route::post('/', 'store')->name('store');
 
-// Транзакции/Операции
-Route::controller(TransactionController::class)->prefix('transactions')->name('api.transaction.')->group(function (): void {
-    // Получение всех транзакций
-    Route::get('/', 'index')->name('index');
+        // Получение счёта
+        Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
 
-    // Пополнения счета
-    Route::post('/deposit', 'deposit')->name('deposit');
+        // Получение баланса по счёту
+        Route::get('/{uuid}/balance', 'balance')->whereUuid('uuid')->name('balance');
 
-    // Списания со счета
-    Route::post('/withdraw', 'withdraw')->name('withdraw');
+        // Получение выписки по счёту
+        Route::get('/{uuid}/ledger', 'ledger')->whereUuid('uuid')->name('ledger');
+    });
 
-    // Перевод между счетами
-    Route::post('/transfer', 'transfer')->name('transfer');
+    // Транзакции/Операции
+    Route::controller(TransactionController::class)->prefix('transactions')->name('api.transaction.')->group(function (): void {
+        // Получение всех транзакций
+        Route::get('/', 'index')->name('index');
 
-    // Повтор failed-транзакцию
-    Route::post('/{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+        // Пополнения счета
+        Route::post('/deposit', 'deposit')->name('deposit');
 
-    // Одна транзакция по uuid
-    Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
+        // Списания со счета
+        Route::post('/withdraw', 'withdraw')->name('withdraw');
+
+        // Перевод между счетами
+        Route::post('/transfer', 'transfer')->name('transfer');
+
+        // Повтор failed-транзакцию
+        Route::post('/{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+
+        // Одна транзакция по uuid
+        Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');
+    });
 });

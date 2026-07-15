@@ -5,6 +5,7 @@ use App\Http\Middleware\ApiRequestLoggingMiddleware;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestIdMiddleware;
 use App\Support\Http\ProblemDetails;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -15,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -229,6 +231,76 @@ return Application::configure(basePath: dirname(__DIR__))
                 detail: 'Authentication is required.',
                 status: Response::HTTP_UNAUTHORIZED,
                 type: 'https://ledgerpay.local/problems/unauthenticated',
+            );
+        });
+
+        /**
+         * Недостаточно прав для выполнения действия — 403
+         *
+         * Обрабатывает ошибки авторизации на уровне Laravel.
+         *
+         * AuthorizationException обычно возникает, когда проверка доступа
+         * через Gate или Policy завершается отказом, например при вызове:
+         *
+         * - Gate::authorize(...);
+         * - $this->authorize(...);
+         * - authorizeResource(...);
+         * - метода Policy, вернувшего false или Response::deny().
+         *
+         * В отличие от AuthenticationException с кодом 401, пользователь
+         * может быть успешно аутентифицирован, но не иметь разрешения
+         * на выполнение конкретного действия.
+         */
+        $exceptions->render(function (AuthorizationException $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Для API возвращаем единообразный JSON-ответ с кодом 403,
+             * не раскрывая клиенту внутренние правила Gate или Policy.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Forbidden',
+                detail: 'You are not allowed to perform this action.',
+                status: Response::HTTP_FORBIDDEN,
+                type: 'https://ledgerpay.local/problems/forbidden',
+            );
+        });
+
+        /**
+         * Доступ к HTTP-ресурсу запрещён — 403
+         *
+         * Обрабатывает HTTP-исключение AccessDeniedHttpException
+         * на уровне Symfony HttpKernel.
+         *
+         * Такое исключение может возникнуть, когда:
+         *
+         * - вызывается abort(403);
+         * - middleware запрещает доступ к ресурсу;
+         * - исключение авторизации преобразуется в HTTP-исключение;
+         * - компонент фреймворка отклоняет запрос из-за отсутствия прав.
+         *
+         * Отдельный обработчик нужен, чтобы любые HTTP-ошибки доступа
+         * возвращались в том же формате Problem Details, что и Laravel-ошибки
+         * авторизации.
+         */
+        $exceptions->render(function (AccessDeniedHttpException $exception, Request $request) {
+            if (!$request->expectsJson()) {
+                return null;
+            }
+
+            /*
+             * Возвращаем безопасный ответ с кодом 403 без исходного сообщения
+             * исключения, которое может содержать внутренние детали проверки.
+             */
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Forbidden',
+                detail: 'You are not allowed to perform this action.',
+                status: Response::HTTP_FORBIDDEN,
+                type: 'https://ledgerpay.local/problems/forbidden',
             );
         });
 
