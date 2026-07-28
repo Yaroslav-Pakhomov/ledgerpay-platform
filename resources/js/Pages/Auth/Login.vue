@@ -1,100 +1,49 @@
 <script setup>
-import Checkbox from '@/Components/Checkbox.vue';
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
 
-defineProps({
-    canResetPassword: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
-});
+import { Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
     email: '',
     password: '',
-    remember: false,
 });
-
-const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
-    });
-};
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Log in" />
+    <div class="flex min-h-screen items-center justify-center bg-gray-950 px-6">
+        <div class="card w-full max-w-md">
+            <h1 class="mb-2 text-2xl font-bold">Sign in</h1>
+            <p class="mb-6 text-sm text-gray-400">
+                Access LedgerPay fintech dashboard.
+            </p>
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
-            {{ status }}
-        </div>
+            <form class="space-y-4" @submit.prevent="form.post('/login')">
+                <div>
+                    <label class="label">Email</label>
+                    <input v-model="form.email" class="input" type="email">
+                    <div v-if="form.errors.email" class="mt-1 text-sm text-red-400">
+                        {{ form.errors.email }}
+                    </div>
+                </div>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
+                <div>
+                    <label class="label">Password</label>
+                    <input v-model="form.password" class="input" type="password">
+                    <div v-if="form.errors.password" class="mt-1 text-sm text-red-400">
+                        {{ form.errors.password }}
+                    </div>
+                </div>
 
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
+                <button class="btn w-full" :disabled="form.processing">
+                    Login
+                </button>
+            </form>
 
-                <InputError class="mt-2" :message="form.errors.email" />
-            </div>
-
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="current-password"
-                />
-
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
-
-            <div class="mt-4 block">
-                <label class="flex items-center">
-                    <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Remember me</span
-                    >
-                </label>
-            </div>
-
-            <div class="mt-4 flex items-center justify-end">
-                <Link
-                    v-if="canResetPassword"
-                    :href="route('password.request')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                >
-                    Forgot your password?
+            <div class="mt-6 text-sm text-gray-400">
+                No account?
+                <Link href="/register" class="text-indigo-400 hover:text-indigo-300">
+                    Register
                 </Link>
-
-                <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
-                >
-                    Log in
-                </PrimaryButton>
             </div>
-        </form>
-    </GuestLayout>
+        </div>
+    </div>
 </template>

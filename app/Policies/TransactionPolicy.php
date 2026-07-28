@@ -46,4 +46,12 @@ class TransactionPolicy
     {
         return $this->view($user, $transaction);
     }
+
+    /**
+     * Политика для списка своих транзакций
+     */
+    public function viewOwnList(User $user): bool
+    {
+        return $user->isBackOffice() || $user->customer_id !== null;
+    }
 }

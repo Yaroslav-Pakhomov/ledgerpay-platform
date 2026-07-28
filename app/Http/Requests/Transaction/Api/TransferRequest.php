@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\Transaction;
+namespace App\Http\Requests\Transaction\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Запрос на списание средств со счета через API.
+ * Запрос на перевод средств между счетами через API.
  *
  * Этот класс принимает HTTP-запрос, проверяет его
  * и готовит данные для TransactionService.
@@ -15,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Здесь нет логики списания или зачисления денег —
  * только проверка входных данных.
  */
-final class WithdrawRequest extends FormRequest
+final class TransferRequest extends FormRequest
 {
     /**
      * Разрешает ли текущий пользователь выполнить этот запрос.
@@ -32,17 +32,25 @@ final class WithdrawRequest extends FormRequest
      * Правила проверки полей запроса.
      *
      * Здесь проверяем только формат данных:
-     * uuid счета, сумма, валюта.
+     * uuid счетов, сумма, валюта.
      *
-     * Проверки вроде «счет активен» или «достаточно средств»
+     * Также проверяем, что счета отправителя и получателя разные.
+     *
+     * Проверки вроде «счет активен» или «валюта совпадает»
      * выполняются позже в TransactionProcessorService.
      */
     public function rules(): array
     {
         return [
             'source_account_uuid' => ['required', 'uuid', 'exists:accounts,uuid'],
-            'amount'              => ['required', 'integer', 'min:1'],
-            'currency'            => ['required', 'string', 'size:3'],
+            'target_account_uuid' => [
+                'required',
+                'uuid',
+                'exists:accounts,uuid',
+                'different:source_account_uuid',
+            ],
+            'amount'   => ['required', 'integer', 'min:1'],
+            'currency' => ['required', 'string', 'size:3'],
         ];
     }
 
@@ -50,7 +58,7 @@ final class WithdrawRequest extends FormRequest
      * Возвращает Idempotency-Key из заголовка запроса.
      *
      * Если клиент повторит запрос с тем же ключом,
-     * деньги не будут списаны второй раз.
+     * деньги не будут переведены второй раз.
      */
     public function idempotencyKey(): string
     {

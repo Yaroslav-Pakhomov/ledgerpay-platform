@@ -135,6 +135,8 @@ final class Account extends Model
 
     /**
      * Связь: счет принадлежит одному клиенту.
+     *
+     * @return BelongsTo<Customer, $this>
      */
     public function customer(): BelongsTo
     {
@@ -143,6 +145,8 @@ final class Account extends Model
 
     /**
      * Связь: у счета может быть много проводок/записей ledger.
+     *
+     * @return HasMany<LedgerEntry, $this>
      */
     public function ledgerEntries(): HasMany
     {

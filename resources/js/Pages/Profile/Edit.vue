@@ -1,9 +1,14 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
+
+defineOptions({
+    layout: AppLayout,
+    name: 'ProfileEdit',
+});
 
 defineProps({
     mustVerifyEmail: {
@@ -18,39 +23,31 @@ defineProps({
 <template>
     <Head title="Profile" />
 
-    <AuthenticatedLayout>
-        <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800"
-            >
-                Profile
-            </h2>
-        </template>
+    <div class="space-y-8">
+        <div>
+            <Link href="/" class="text-indigo-400 hover:text-indigo-300">
+                ← Вернуться на панель управления
+            </Link>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
-                    />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <UpdatePasswordForm class="max-w-xl" />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
-                >
-                    <DeleteUserForm class="max-w-xl" />
-                </div>
-            </div>
+            <h1 class="mt-4 text-3xl font-bold">Профиль</h1>
+            <p class="mt-2 text-gray-400">
+                Обновите информацию о своей учетной записи и настройки безопасности.
+            </p>
         </div>
-    </AuthenticatedLayout>
+
+        <section class="card max-w-2xl">
+            <UpdateProfileInformationForm
+                :must-verify-email="mustVerifyEmail"
+                :status="status"
+            />
+        </section>
+
+        <section class="card max-w-2xl">
+            <UpdatePasswordForm />
+        </section>
+
+        <section class="card max-w-2xl">
+            <DeleteUserForm />
+        </section>
+    </div>
 </template>

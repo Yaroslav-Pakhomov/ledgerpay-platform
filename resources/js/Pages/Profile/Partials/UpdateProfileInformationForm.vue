@@ -1,8 +1,4 @@
 <script setup>
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 
 defineProps({
@@ -25,73 +21,75 @@ const form = useForm({
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium text-gray-900">
-                Profile Information
+            <h2 class="text-xl font-bold">
+                Информация о профиле
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600">
-                Update your account's profile information and email address.
+            <p class="mt-1 text-sm text-gray-400">
+                Обновите данные своего профиля и адрес электронной почты.
             </p>
         </header>
 
         <form
+            class="mt-6 space-y-4"
             @submit.prevent="form.patch(route('profile.update'))"
-            class="mt-6 space-y-6"
         >
             <div>
-                <InputLabel for="name" value="Name" />
-
-                <TextInput
+                <label class="label" for="name">Name</label>
+                <input
                     id="name"
-                    type="text"
-                    class="mt-1 block w-full"
                     v-model="form.name"
+                    class="input"
+                    type="text"
                     required
                     autofocus
                     autocomplete="name"
-                />
-
-                <InputError class="mt-2" :message="form.errors.name" />
+                >
+                <div v-if="form.errors.name" class="mt-1 text-sm text-red-400">
+                    {{ form.errors.name }}
+                </div>
             </div>
 
             <div>
-                <InputLabel for="email" value="Email" />
-
-                <TextInput
+                <label class="label" for="email">Email</label>
+                <input
                     id="email"
-                    type="email"
-                    class="mt-1 block w-full"
                     v-model="form.email"
+                    class="input"
+                    type="email"
                     required
                     autocomplete="username"
-                />
-
-                <InputError class="mt-2" :message="form.errors.email" />
+                >
+                <div v-if="form.errors.email" class="mt-1 text-sm text-red-400">
+                    {{ form.errors.email }}
+                </div>
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
-                <p class="mt-2 text-sm text-gray-800">
-                    Your email address is unverified.
+                <p class="text-sm text-gray-300">
+                    Ваш адрес электронной почты не подтвержден.
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
-                        class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        class="text-indigo-400 hover:text-indigo-300"
                     >
-                        Click here to re-send the verification email.
+                        Нажмите здесь, чтобы повторно отправить письмо с подтверждением.
                     </Link>
                 </p>
 
                 <div
                     v-show="status === 'verification-link-sent'"
-                    class="mt-2 text-sm font-medium text-green-600"
+                    class="mt-2 text-sm font-medium text-green-300"
                 >
-                    A new verification link has been sent to your email address.
+                    Новая ссылка для подтверждения отправлена на ваш адрес электронной почты.
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+            <div class="flex items-center gap-4 pt-2">
+                <button class="btn" type="submit" :disabled="form.processing">
+                    Сохранить
+                </button>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -101,9 +99,9 @@ const form = useForm({
                 >
                     <p
                         v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600"
+                        class="text-sm text-green-300"
                     >
-                        Saved.
+                        Сохранено.
                     </p>
                 </Transition>
             </div>

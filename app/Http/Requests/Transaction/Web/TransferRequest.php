@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Requests\Transaction;
+namespace App\Http\Requests\Transaction\Web;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 /**
- * Запрос на перевод средств между счетами через API.
+ * Запрос на перевод средств между счетами через WEB.
  *
  * Этот класс принимает HTTP-запрос, проверяет его
  * и готовит данные для TransactionService.
@@ -55,45 +56,13 @@ final class TransferRequest extends FormRequest
     }
 
     /**
-     * Возвращает Idempotency-Key из заголовка запроса.
+     * Возвращает Idempotency-Key.
      *
      * Если клиент повторит запрос с тем же ключом,
      * деньги не будут переведены второй раз.
      */
     public function idempotencyKey(): string
     {
-        return (string) $this->header('Idempotency-Key');
-    }
-
-    /**
-     * Подготавливает данные перед проверкой.
-     *
-     * Убирает лишние пробелы в Idempotency-Key,
-     * чтобы один и тот же ключ не считался разным.
-     */
-    protected function prepareForValidation(): void
-    {
-        $this->headers->set(
-            'Idempotency-Key',
-            trim($this->idempotencyKey())
-        );
-    }
-
-    /**
-     * Дополнительная проверка заголовков.
-     *
-     * В rules() нельзя проверить HTTP-заголовки,
-     * поэтому наличие Idempotency-Key проверяем отдельно.
-     */
-    public function withValidator($validator): void
-    {
-        $validator->after(function ($validator): void {
-            if ($this->idempotencyKey() === '') {
-                $validator->errors()->add(
-                    'Idempotency-Key',
-                    'The Idempotency-Key header is required.'
-                );
-            }
-        });
+        return 'web-transfer-'.Str::uuid()->toString();
     }
 }

@@ -27,4 +27,12 @@ class AccountPolicy
     {
         return $user->isBackOffice() || $user->customer_id !== null;
     }
+
+    /**
+     * Политика для списка своих счетов
+     */
+    public function viewOwnList(User $user): bool
+    {
+        return $user->isBackOffice() || $user->customer_id !== null;
+    }
 }
