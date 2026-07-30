@@ -73,10 +73,12 @@ jobs:
           php artisan key:generate
           php artisan migrate --force   # env job'а переопределяет DB_* из .env
 
+      - name: Build frontend
+        run: npm run build              # Vite / Inertia — ловим ошибки сборки
+
       - name: Run quality checks
         # quality:ci — rector, pint --test, phpstan, test без coverage
         # (локально: composer quality — pint --dirty + coverage)
         run: composer quality:ci
 
-      - name: Build frontend
-        run: npm run build              # Vite / Inertia — ловим ошибки сборки
+
