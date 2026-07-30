@@ -59,6 +59,10 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test --coverage"
         ],
+        "test:ci": [
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan test"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
@@ -86,6 +90,9 @@
         "pint": [
             "@php pint --dirty"
         ],
+        "pint:ci": [
+            "@php pint --test"
+        ],
         "phpstan": [
             "./vendor/bin/phpstan analyse"
         ],
@@ -99,6 +106,12 @@
             "@pint",
             "@phpstan",
             "@test"
+        ],
+        "quality:ci": [
+            "@rector:dry",
+            "@pint",
+            "@phpstan",
+            "@test:ci"
         ]
     },
     "extra": {

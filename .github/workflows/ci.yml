@@ -1,0 +1,84 @@
+# Название workflow — отображается во вкладке Actions на GitHub
+name: CI Ledger pay
+
+# Когда запускать пайплайн
+on:
+  push:
+    # Каждый push в эти ветки (develop — разработка, master — релиз)
+    branches: [develop, master]
+  pull_request:
+    # PR, направленные В эти ветки (например develop → master)
+    branches: [develop, master]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    # Переменные для всех steps job'а.
+    # Перекрывают значения из .env.example (там DB_HOST=pgsql — hostname Sail, в CI его нет).
+    # SESSION/CACHE/QUEUE — in-memory/sync, Redis в CI не поднимаем.
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: sail
+      DB_PASSWORD: password
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+
+    # Контейнер PostgreSQL — доступен на localhost:5432
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: sail
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        # GitHub ждёт healthy-статус перед стартом steps
+        options: >-
+          --health-cmd="pg_isready -U sail"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'            # как в composer.json (^8.3)
+          extensions: pdo_pgsql, redis
+          coverage: none                # coverage не нужен; test:ci без --coverage
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm                    # кеш node_modules по package-lock.json
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist
+          npm ci                        # строго по lock-файлу (как в CI принято)
+
+      - name: Prepare Laravel
+        run: |
+          mkdir -p storage/framework/{cache/data,sessions,views,testing}
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --force   # env job'а переопределяет DB_* из .env
+
+      - name: Build frontend
+        run: npm run build              # Vite / Inertia — ловим ошибки сборки
+
+      - name: Run quality checks
+        # quality:ci — rector, pint --test, phpstan, test без coverage
+        # (локально: composer quality — pint --dirty + coverage)
+        run: composer quality:ci
+
+
