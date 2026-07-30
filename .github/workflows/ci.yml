@@ -1,5 +1,5 @@
 # Название workflow — отображается во вкладке Actions на GitHub
-name: CI
+name: CI Ledger pay
 
 # Когда запускать пайплайн
 on:
