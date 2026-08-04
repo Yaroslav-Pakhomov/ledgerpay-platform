@@ -107,6 +107,8 @@ final class Customer extends Model
      * Связь "один ко многим".
      *
      * Один клиент может владеть несколькими счетами.
+     *
+     * @return HasMany<Account, $this>
      */
     public function accounts(): HasMany
     {

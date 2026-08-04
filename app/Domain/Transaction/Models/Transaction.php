@@ -117,6 +117,8 @@ final class Transaction extends Model
      *
      * Для deposit может быть null,
      * если деньги поступают извне системы.
+     *
+     * @return BelongsTo<Account, $this>
      */
     public function sourceAccount(): BelongsTo
     {
@@ -131,6 +133,8 @@ final class Transaction extends Model
      *
      * Для withdrawal может быть null,
      * если деньги выводятся из системы.
+     *
+     * @return BelongsTo<Account, $this>
      */
     public function targetAccount(): BelongsTo
     {

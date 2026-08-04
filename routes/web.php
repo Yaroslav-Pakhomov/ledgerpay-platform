@@ -3,22 +3,12 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
+use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
+use App\Http\Controllers\Web\Backoffice\TransactionController as BackofficeTransactionController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\TransactionController;
 use Illuminate\Support\Facades\Route;
-
-// Route::get('/', function () {
-//     return Inertia::render('Welcome', [
-//         'canLogin'       => Route::has('login'),
-//         'canRegister'    => Route::has('register'),
-//         'laravelVersion' => Application::VERSION,
-//         'phpVersion'     => PHP_VERSION,
-//     ]);
-// });
-
-// Route::get('/dashboard', function () {
-//     return Inertia::render('Dashboard');
-// })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('guest')->group(function (): void {
     Route::controller(AuthController::class)->group(function (): void {
@@ -76,6 +66,18 @@ Route::middleware('auth')->group(function (): void {
 
         // Удаление профиля
         Route::delete('/', 'destroy')->name('destroy');
+    });
+
+    // Бэк-офис
+    Route::middleware('backoffice')->prefix('backoffice')->name('backoffice.')->group(function (): void {
+        // Главная страница
+        Route::get('/', BackofficeDashboardController::class)->name('dashboard');
+
+        // Страница Клиента
+        Route::get('/customers/{uuid}', [BackofficeCustomerController::class, 'show'])->whereUuid('uuid')->name('customers.show');
+
+        // Список транзакций
+        Route::get('/transactions', [BackofficeTransactionController::class, 'index'])->name('transactions.index');
     });
 });
 

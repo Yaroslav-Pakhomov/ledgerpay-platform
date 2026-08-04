@@ -22,6 +22,14 @@ function logout() {
                     </span>
 
                     <Link
+                        v-if="page.props.auth.user?.is_backoffice"
+                        href="/backoffice"
+                        class="text-indigo-400 hover:text-indigo-300"
+                    >
+                        Бэк-офис
+                    </Link>
+
+                    <Link
                         :href="route('profile.edit')"
                         class="text-indigo-400 hover:text-indigo-300"
                     >

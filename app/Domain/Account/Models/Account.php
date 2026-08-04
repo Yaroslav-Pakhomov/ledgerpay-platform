@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * например в копейках/центах, а не в рублях/долларах.
  *
  * @property AccountStatus $status
+ * @property mixed|null $email
  */
 final class Account extends Model
 {
