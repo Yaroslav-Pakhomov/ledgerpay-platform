@@ -51,7 +51,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'            # как в composer.json (^8.3)
+          php-version: '8.5'            # как в composer.json (^8.5)
           extensions: pdo_pgsql, redis
           coverage: none                # coverage не нужен; test:ci без --coverage
 
