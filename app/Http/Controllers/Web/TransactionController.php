@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
+use App\Application\Audit\Services\AuditLogger;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
 use App\Application\Transaction\Services\TransactionService;
 use App\Domain\Account\Models\Account;
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Transaction\Web\DepositRequest;
 use App\Http\Requests\Transaction\Web\TransferRequest;
 use App\Http\Requests\Transaction\Web\WithdrawRequest;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Throwable;
 
@@ -33,16 +37,32 @@ use Throwable;
  * Для back office:
  * • view проходит на любой счёт,
  * • create тоже — может операции по любым счетам.
+ *
+ * После постановки в очередь пишет {@see AuditAction::TransactionQueued},
+ * после retry — {@see AuditAction::TransactionRetried}.
  */
 final class TransactionController extends Controller
 {
     /**
-     * Создает операцию пополнения счета.
+     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     */
+    public function __construct(
+        private readonly AuditLogger $audit,
+    ) {}
+
+    /**
+     * Создаёт операцию пополнения счёта.
      *
-     *  Данные из запроса упаковываются в DTO
-     *  и передаются в TransactionService.
+     * Данные из запроса упаковываются в DTO и передаются в TransactionService.
+     * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @throws Throwable
+     * @param  DepositRequest  $request  Валидированные данные (target_account_uuid, amount, currency)
+     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     *
+     * @throws ModelNotFoundException если целевой счёт не найден
+     * @throws AuthorizationException при отсутствии права view на счёт или create на Transaction
+     * @throws Throwable при ошибке транзакции БД в TransactionService
      */
     public function deposit(DepositRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -55,7 +75,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transactionService->deposit(
+        $transaction = $transactionService->deposit(
             new CreateDepositData(
                 $validated['target_account_uuid'],
                 $validated['amount'],
@@ -64,16 +84,33 @@ final class TransactionController extends Controller
             )
         );
 
+        $this->audit->log(
+            auditAction: AuditAction::TransactionQueued,
+            entity: $transaction,
+            metadata: [
+                'type'     => $transaction->type->value,
+                'amount'   => $transaction->amount,
+                'currency' => $transaction->currency,
+            ],
+            request: $request,
+        );
+
         return back()->with('success', 'Транзакция по депозиту поставлена в очередь.');
     }
 
     /**
-     * Создает операцию списания со счета.
+     * Создаёт операцию списания со счёта.
      *
-     *  Данные из запроса упаковываются в DTO
-     *  и передаются в TransactionService.
+     * Данные из запроса упаковываются в DTO и передаются в TransactionService.
+     * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @throws Throwable
+     * @param  WithdrawRequest  $request  Валидированные данные (source_account_uuid, amount, currency)
+     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     *
+     * @throws ModelNotFoundException если счёт-источник не найден
+     * @throws AuthorizationException при отсутствии права view на счёт или create на Transaction
+     * @throws Throwable при ошибке транзакции БД в TransactionService
      */
     public function withdraw(WithdrawRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -86,7 +123,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transactionService->withdraw(
+        $transaction = $transactionService->withdraw(
             new CreateWithdrawalData(
                 $validated['source_account_uuid'],
                 $validated['amount'],
@@ -95,16 +132,34 @@ final class TransactionController extends Controller
             )
         );
 
-        return back()->with('success', 'Транзакция вывода поставлена в очередь');
+        $this->audit->log(
+            auditAction: AuditAction::TransactionQueued,
+            entity: $transaction,
+            metadata: [
+                'type'     => $transaction->type->value,
+                'amount'   => $transaction->amount,
+                'currency' => $transaction->currency,
+            ],
+            request: $request,
+        );
+
+        return back()->with('success', 'Транзакция вывода поставлена в очередь.');
     }
 
     /**
-     * Создает операцию перевода между счетами.
+     * Создаёт операцию перевода между счетами.
      *
-     *  Данные из запроса упаковываются в DTO
-     *  и передаются в TransactionService.
+     * Данные из запроса упаковываются в DTO и передаются в TransactionService.
+     * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @throws Throwable
+     * @param  TransferRequest  $request  Валидированные данные (source_account_uuid, target_account_uuid,
+     *                                    amount, currency)
+     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     *
+     * @throws ModelNotFoundException если один из счетов не найден
+     * @throws AuthorizationException при отсутствии права view на счета или create на Transaction
+     * @throws Throwable при ошибке транзакции БД в TransactionService
      */
     public function transfer(TransferRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -119,7 +174,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transactionService->transfer(
+        $transaction = $transactionService->transfer(
             new CreateTransferData(
                 $validated['source_account_uuid'],
                 $validated['target_account_uuid'],
@@ -129,11 +184,32 @@ final class TransactionController extends Controller
             )
         );
 
+        $this->audit->log(
+            auditAction: AuditAction::TransactionQueued,
+            entity: $transaction,
+            metadata: [
+                'type'     => $transaction->type->value,
+                'amount'   => $transaction->amount,
+                'currency' => $transaction->currency,
+            ],
+            request: $request,
+        );
+
         return back()->with('success', 'Транзакция перевода поставлена в очередь.');
     }
 
     /**
-     * Повтор неудачной транзакции
+     * Повторная попытка неудачной транзакции.
+     *
+     * Требует права retry (эквивалент view на транзакцию).
+     * Если транзакция не в статусе Failed, сервис вернёт её без повторной постановки в очередь.
+     *
+     * @param  string  $uuid  UUID транзакции для повтора
+     * @param  TransactionService  $transactionService  Сервис повторной постановки транзакции в очередь
+     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     *
+     * @throws ModelNotFoundException если транзакция не найдена
+     * @throws AuthorizationException при отсутствии права retry
      */
     public function retry(string $uuid, TransactionService $transactionService): RedirectResponse
     {
@@ -145,7 +221,13 @@ final class TransactionController extends Controller
         // retry = «можешь ли ты видеть эту транзакцию»
         $this->authorize('retry', $transaction);
 
-        $transactionService->retry($uuid);
+        $retried = $transactionService->retry($uuid);
+
+        $this->audit->log(
+            auditAction: AuditAction::TransactionRetried,
+            entity: $retried,
+            request: request(),
+        );
 
         return back()->with('success', 'Транзакция повторной попытки поставлена в очередь.');
     }

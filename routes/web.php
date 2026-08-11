@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
+use App\Http\Controllers\Web\Backoffice\AuditLogController as BackofficeAuditLogController;
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
 use App\Http\Controllers\Web\Backoffice\TransactionController as BackofficeTransactionController;
@@ -78,6 +79,9 @@ Route::middleware('auth')->group(function (): void {
 
         // Список транзакций
         Route::get('/transactions', [BackofficeTransactionController::class, 'index'])->name('transactions.index');
+
+        // Список логов
+        Route::get('/audit-logs', [BackofficeAuditLogController::class, 'index'])->name('audit-logs.index');
     });
 });
 

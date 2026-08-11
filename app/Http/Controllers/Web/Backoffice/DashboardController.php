@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web\Backoffice;
 
+use App\Application\Audit\Services\AuditLogger;
 use App\Domain\Account\Models\Account;
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Models\Transaction;
@@ -18,11 +20,25 @@ use Inertia\Response;
  * Формирует сводные метрики,
  * список последних клиентов
  * и последние неуспешные транзакции.
+ *
+ * После загрузки пишет {@see AuditAction::BackofficeDashboardViewed}.
  */
 final class DashboardController extends Controller
 {
     /**
+     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     */
+    public function __construct(
+        private readonly AuditLogger $audit,
+    ) {}
+
+    /**
      * Отображает панель управления бэк-офиса.
+     *
+     * Audit: {@see AuditAction::BackofficeDashboardViewed} — entity = auth user.
+     *
+     * @param  Request  $request  Query: search (фильтр клиентов)
+     * @return Response Inertia-страница Backoffice/Dashboard
      */
     public function __invoke(Request $request): Response
     {
@@ -63,6 +79,12 @@ final class DashboardController extends Controller
             ->latest()
             ->limit(20)
             ->get();
+
+        $this->audit->log(
+            auditAction: AuditAction::BackofficeDashboardViewed,
+            entity: auth()->user(),
+            request: request(),
+        );
 
         // Передаём подготовленные данные в Inertia-компонент панели управления.
         return inertia('Backoffice/Dashboard', [

@@ -70,9 +70,15 @@ function money(amount, currency) {
             <div class="mb-4 flex items-center justify-between gap-4">
                 <h2 class="text-xl font-bold">Поиск клиентов</h2>
 
-                <Link :href="route('backoffice.transactions.index')" class="text-indigo-400 hover:text-indigo-300">
-                    Монитор транзакций →
-                </Link>
+                <div class="flex gap-4">
+                    <Link :href="route('backoffice.transactions.index')" class="text-indigo-400 hover:text-indigo-300">
+                        Монитор транзакций →
+                    </Link>
+
+                    <Link :href="route('backoffice.audit-logs.index')" class="text-indigo-400 hover:text-indigo-300">
+                        Журнал аудита →
+                    </Link>
+                </div>
             </div>
 
             <form class="mb-6 flex gap-3" @submit.prevent="submitSearch">

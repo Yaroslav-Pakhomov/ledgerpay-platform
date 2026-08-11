@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web\Backoffice;
 
+use App\Application\Audit\Services\AuditLogger;
 use App\Domain\Account\Models\Account;
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
@@ -16,13 +18,27 @@ use Inertia\Response;
  * Загружает основную информацию о клиенте,
  * принадлежащие ему счета и последние транзакции,
  * связанные с этими счетами.
+ *
+ * После успешной загрузки пишет {@see AuditAction::BackofficeCustomerViewed}:
+ * entity — текущий backoffice-пользователь, snapshot клиента — в metadata.
  */
 final class CustomerController extends Controller
 {
     /**
+     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     */
+    public function __construct(
+        private readonly AuditLogger $audit,
+    ) {}
+
+    /**
      * Отображает подробную информацию о клиенте.
      *
-     * @param  string  $uuid  UUID клиента.
+     * Audit: {@see AuditAction::BackofficeCustomerViewed} — `entity` = auth user,
+     * `metadata.customer` — snapshot просмотренного клиента, `metadata.accounts` — ID счетов.
+     *
+     * @param  string  $uuid  UUID клиента
+     * @return Response Inertia-страница Backoffice/CustomerShow
      */
     public function show(string $uuid): Response
     {
@@ -61,6 +77,22 @@ final class CustomerController extends Controller
             // Ограничиваем количество записей для страницы клиента.
             ->limit(50)
             ->get();
+
+        $this->audit->log(
+            auditAction: AuditAction::BackofficeCustomerViewed,
+            entity: auth()->user(),
+            metadata: [
+                'customer' => [
+                    'uuid'       => $customer->uuid,
+                    'name'       => $customer->name,
+                    'email'      => $customer->email,
+                    'status'     => $customer->status->value,
+                    'created_at' => $customer->created_at->toDayDateTimeString(),
+                ],
+                'accounts' => $accountIds->all(),
+            ],
+            request: request(),
+        );
 
         // Передаём подготовленные данные
         // в Inertia-компонент страницы клиента.

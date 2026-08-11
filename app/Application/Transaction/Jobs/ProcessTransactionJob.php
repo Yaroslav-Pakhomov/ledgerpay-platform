@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Application\Transaction\Jobs;
 
+use App\Application\Audit\Services\AuditLogger;
 use App\Application\Transaction\Services\TransactionProcessorService;
+use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Bus\Queueable;
@@ -59,13 +61,18 @@ final class ProcessTransactionJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping('transaction:'.$this->transactionId))
+            new WithoutOverlapping('transaction:'.$this->transactionId)
                 ->releaseAfter(10)
                 ->expireAfter(60),
         ];
     }
 
     /**
+     * Загружает транзакцию, делегирует обработку в processor, пишет audit.
+     *
+     * После успеха — {@see AuditAction::TransactionCompleted} через {@see AuditLogger}
+     * (без HTTP context, `actor_user_id` = null).
+     *
      * @throws Throwable
      */
     public function handle(TransactionProcessorService $processor): void
@@ -92,7 +99,18 @@ final class ProcessTransactionJob implements ShouldQueue
             return;
         }
 
-        $processor->process($transaction);
+        $processed = $processor->process($transaction);
+
+        // Audit: TransactionCompleted — без HTTP context, actor_user_id = null.
+        app(AuditLogger::class)->log(
+            auditAction: AuditAction::TransactionCompleted,
+            entity: $processed,
+            metadata: [
+                'type'     => $processed->type->value,
+                'amount'   => $processed->amount,
+                'currency' => $processed->currency,
+            ],
+        );
 
         Log::info('Transaction processing completed.', [
             'transaction_id' => $this->transactionId,
@@ -102,7 +120,9 @@ final class ProcessTransactionJob implements ShouldQueue
     /**
      * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
      *
-     * failure_reason сохраняет доменное сообщение исключения для API и аудита.
+     * После update агрегата пишет {@see AuditAction::TransactionFailed}
+     * через {@see AuditLogger}. `failure_reason` сохраняет доменное
+     * сообщение исключения для API и аудита.
      */
     public function failed(Throwable $exception): void
     {
@@ -112,15 +132,24 @@ final class ProcessTransactionJob implements ShouldQueue
             return;
         }
 
+        $transaction->update([
+            'status'         => TransactionStatus::Failed,
+            'failure_reason' => $exception->getMessage(),
+        ]);
+
+        app(AuditLogger::class)->log(
+            auditAction: AuditAction::TransactionFailed,
+            entity: $transaction,
+            metadata: [
+                'exception_class' => $exception::class,
+                'message'         => $exception->getMessage(),
+            ],
+        );
+
         Log::error('Transaction processing failed.', [
             'transaction_id'  => $this->transactionId,
             'exception_class' => $exception::class,
             'message'         => $exception->getMessage(),
-        ]);
-
-        $transaction->update([
-            'status'         => TransactionStatus::Failed,
-            'failure_reason' => $exception->getMessage(),
         ]);
     }
 }
