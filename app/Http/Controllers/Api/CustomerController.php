@@ -42,7 +42,7 @@ final class CustomerController extends Controller
             )
         );
 
-        return (new CustomerResource($customer))
+        return new CustomerResource($customer)
             ->response()
             ->setStatusCode(ResponseAlias::HTTP_CREATED);
     }

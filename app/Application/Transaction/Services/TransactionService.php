@@ -32,7 +32,7 @@ final readonly class TransactionService
      *
      * @throws Throwable
      */
-    public function deposit(CreateDepositData $data): Transaction
+    public function deposit(CreateDepositData $data): TransactionCreationResult
     {
         /**
          * Создаем транзакцию в состоянии Pending.
@@ -65,7 +65,10 @@ final readonly class TransactionService
 
         $this->dispatchIfNewPending($result);
 
-        return $result->transaction->refresh();
+        return new TransactionCreationResult(
+            transaction: $result->transaction->refresh(),
+            created: $result->created,
+        );
     }
 
     /**
@@ -76,7 +79,7 @@ final readonly class TransactionService
      *
      * @throws Throwable
      */
-    public function withdraw(CreateWithdrawalData $data): Transaction
+    public function withdraw(CreateWithdrawalData $data): TransactionCreationResult
     {
         /**
          * Создаем транзакцию в состоянии Pending.
@@ -109,7 +112,10 @@ final readonly class TransactionService
 
         $this->dispatchIfNewPending($result);
 
-        return $result->transaction->refresh();
+        return new TransactionCreationResult(
+            transaction: $result->transaction->refresh(),
+            created: $result->created,
+        );
     }
 
     /**
@@ -120,7 +126,7 @@ final readonly class TransactionService
      *
      * @throws Throwable
      */
-    public function transfer(CreateTransferData $data): Transaction
+    public function transfer(CreateTransferData $data): TransactionCreationResult
     {
         /**
          * Создаем транзакцию в состоянии Pending.
@@ -158,7 +164,10 @@ final readonly class TransactionService
 
         $this->dispatchIfNewPending($result);
 
-        return $result->transaction->refresh();
+        return new TransactionCreationResult(
+            transaction: $result->transaction->refresh(),
+            created: $result->created,
+        );
     }
 
     /**

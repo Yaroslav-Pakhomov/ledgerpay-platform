@@ -55,7 +55,7 @@ final class AccountController extends Controller
             )
         );
 
-        return (new AccountResource($account->load('customer')))
+        return new AccountResource($account->load('customer'))
             ->response()
             ->setStatusCode(ResponseAlias::HTTP_CREATED);
     }

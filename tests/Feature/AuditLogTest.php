@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Audit\Services\AuditLogger;
+use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
+use App\Application\Transaction\Services\TransactionService;
 use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
@@ -29,6 +31,7 @@ use Tests\TestCase;
  *
  * Покрывает:
  * - HTTP: POST /login → {@see AuditAction::UserLoggedIn};
+ * - HTTP: POST /transactions/deposit (web) → {@see AuditAction::TransactionQueued};
  * - async: {@see ProcessTransactionJob} → TransactionCompleted / TransactionFailed;
  * - backoffice: GET /backoffice/audit-logs — access control + фильтр action;
  * - backoffice views: GET /backoffice, GET /backoffice/customers/{uuid};
@@ -123,6 +126,63 @@ final class AuditLogTest extends TestCase
 
         $this->get('/backoffice/audit-logs')
             ->assertForbidden();
+    }
+
+    /**
+     * Web deposit создаёт audit-запись transaction_queued с actor_user_id.
+     */
+    public function test_web_deposit_creates_transaction_queued_audit_log(): void
+    {
+        Queue::fake();
+
+        $customer = Customer::factory()->create();
+        $user = User::factory()->forCustomer($customer)->create();
+        $account = Account::factory()->for($customer)->currency('USD')->withBalance(0)->create();
+
+        $this->actingAs($user)->post('/transactions/deposit', [
+            'target_account_uuid' => $account->uuid,
+            'amount'              => 10_000,
+            'currency'            => 'USD',
+        ])->assertRedirect();
+
+        $transaction = Transaction::query()->firstOrFail();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'action'        => AuditAction::TransactionQueued->value,
+            'entity_type'   => Transaction::class,
+            'entity_id'     => $transaction->id,
+            'actor_user_id' => $user->id,
+        ]);
+    }
+
+    /**
+     * Idempotent replay в service (created=false) не создаёт audit сам по себе;
+     * web-контроллер дополнительно guard'ит TransactionQueued через auditQueuedIfCreated().
+     */
+    public function test_idempotent_service_replay_does_not_create_transaction_queued_audit(): void
+    {
+        Queue::fake();
+
+        $account = $this->createAccount($this->createCustomer());
+        $service = app(TransactionService::class);
+
+        $data = new CreateDepositData(
+            $account->uuid,
+            10_000,
+            'USD',
+            'audit-idem-key-001',
+        );
+
+        $first = $service->deposit($data);
+        $second = $service->deposit($data);
+
+        $this->assertTrue($first->created);
+        $this->assertFalse($second->created);
+        $this->assertSame($first->transaction->id, $second->transaction->id);
+
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => AuditAction::TransactionQueued->value,
+        ]);
     }
 
     /**

@@ -8,9 +8,11 @@ use App\Application\Audit\Services\AuditLogger;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
+use App\Application\Transaction\Results\TransactionCreationResult;
 use App\Application\Transaction\Services\TransactionService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
+use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Transaction\Web\DepositRequest;
@@ -19,6 +21,7 @@ use App\Http\Requests\Transaction\Web\WithdrawRequest;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Throwable;
 
 /**
@@ -38,8 +41,9 @@ use Throwable;
  * • view проходит на любой счёт,
  * • create тоже — может операции по любым счетам.
  *
- * После постановки в очередь пишет {@see AuditAction::TransactionQueued},
- * после retry — {@see AuditAction::TransactionRetried}.
+ * Audit: {@see AuditAction::TransactionQueued} — только при `$result->created`
+ * (новая pending-тx и dispatch job); {@see AuditAction::TransactionRetried} —
+ * только если транзакция была в статусе Failed до retry.
  */
 final class TransactionController extends Controller
 {
@@ -75,7 +79,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transaction = $transactionService->deposit(
+        $result = $transactionService->deposit(
             new CreateDepositData(
                 $validated['target_account_uuid'],
                 $validated['amount'],
@@ -84,16 +88,7 @@ final class TransactionController extends Controller
             )
         );
 
-        $this->audit->log(
-            auditAction: AuditAction::TransactionQueued,
-            entity: $transaction,
-            metadata: [
-                'type'     => $transaction->type->value,
-                'amount'   => $transaction->amount,
-                'currency' => $transaction->currency,
-            ],
-            request: $request,
-        );
+        $this->auditQueuedIfCreated($result, $request);
 
         return back()->with('success', 'Транзакция по депозиту поставлена в очередь.');
     }
@@ -123,7 +118,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transaction = $transactionService->withdraw(
+        $result = $transactionService->withdraw(
             new CreateWithdrawalData(
                 $validated['source_account_uuid'],
                 $validated['amount'],
@@ -132,16 +127,7 @@ final class TransactionController extends Controller
             )
         );
 
-        $this->audit->log(
-            auditAction: AuditAction::TransactionQueued,
-            entity: $transaction,
-            metadata: [
-                'type'     => $transaction->type->value,
-                'amount'   => $transaction->amount,
-                'currency' => $transaction->currency,
-            ],
-            request: $request,
-        );
+        $this->auditQueuedIfCreated($result, $request);
 
         return back()->with('success', 'Транзакция вывода поставлена в очередь.');
     }
@@ -174,7 +160,7 @@ final class TransactionController extends Controller
         // Право создавать транзакции
         $this->authorize('create', Transaction::class);
 
-        $transaction = $transactionService->transfer(
+        $result = $transactionService->transfer(
             new CreateTransferData(
                 $validated['source_account_uuid'],
                 $validated['target_account_uuid'],
@@ -184,16 +170,7 @@ final class TransactionController extends Controller
             )
         );
 
-        $this->audit->log(
-            auditAction: AuditAction::TransactionQueued,
-            entity: $transaction,
-            metadata: [
-                'type'     => $transaction->type->value,
-                'amount'   => $transaction->amount,
-                'currency' => $transaction->currency,
-            ],
-            request: $request,
-        );
+        $this->auditQueuedIfCreated($result, $request);
 
         return back()->with('success', 'Транзакция перевода поставлена в очередь.');
     }
@@ -223,12 +200,40 @@ final class TransactionController extends Controller
 
         $retried = $transactionService->retry($uuid);
 
-        $this->audit->log(
-            auditAction: AuditAction::TransactionRetried,
-            entity: $retried,
-            request: request(),
-        );
+        if ($transaction->status === TransactionStatus::Failed) {
+            $this->audit->log(
+                auditAction: AuditAction::TransactionRetried,
+                entity: $retried,
+                request: request(),
+            );
+        }
 
         return back()->with('success', 'Транзакция повторной попытки поставлена в очередь.');
+    }
+
+    /**
+     * Пишет {@see AuditAction::TransactionQueued} только при фактическом создании
+     * pending-транзакции (не при idempotent replay).
+     */
+    private function auditQueuedIfCreated(
+        TransactionCreationResult $result,
+        Request $request,
+    ): void {
+        if (!$result->created) {
+            return;
+        }
+
+        $transaction = $result->transaction;
+
+        $this->audit->log(
+            auditAction: AuditAction::TransactionQueued,
+            entity: $transaction,
+            metadata: [
+                'type'     => $transaction->type->value,
+                'amount'   => $transaction->amount,
+                'currency' => $transaction->currency,
+            ],
+            request: $request,
+        );
     }
 }
