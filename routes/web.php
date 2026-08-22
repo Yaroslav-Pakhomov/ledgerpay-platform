@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ApiDocsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
@@ -83,6 +84,11 @@ Route::middleware('auth')->group(function (): void {
         // Список логов
         Route::get('/audit-logs', [BackofficeAuditLogController::class, 'index'])->name('audit-logs.index');
     });
+});
+
+Route::prefix('api/docs')->name('api.docs.')->group(function (): void {
+    Route::get('/', [ApiDocsController::class, 'ui'])->name('ui');
+    Route::get('/openapi.yaml', [ApiDocsController::class, 'spec'])->name('spec');
 });
 
 // Breeze password reset / email verification маршруты временно убираются (вернуть в отдельном коммите при необходимости).

@@ -29,3 +29,6 @@ Thumbs.db
 # Project exclude paths
 /storage/app/
 /storage/framework/
+
+/docs/portfolio-notes.md
+/plan
