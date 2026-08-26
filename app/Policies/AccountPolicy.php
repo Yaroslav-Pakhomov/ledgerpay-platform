@@ -7,7 +7,7 @@ namespace App\Policies;
 use App\Domain\Account\Models\Account;
 use App\Models\User;
 
-class AccountPolicy
+final class AccountPolicy
 {
     public function viewAny(User $user): bool
     {

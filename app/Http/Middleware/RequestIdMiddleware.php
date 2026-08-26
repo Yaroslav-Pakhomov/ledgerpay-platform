@@ -26,12 +26,12 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Это позволяет найти все записи, относящиеся к конкретному запросу.
  */
-class RequestIdMiddleware
+final class RequestIdMiddleware
 {
     /**
      * Handle an incoming request.
      *
-     * @param  Closure(Request): (Response)  $next
+     * @param Closure(Request): (Response) $next
      */
     public function handle(Request $request, Closure $next): Response
     {

@@ -29,7 +29,7 @@ final class AuditLogController extends Controller
      *
      * Фильтры сохраняются при переходе по страницам ({@see LengthAwarePaginator::withQueryString()}).
      *
-     * @param  Request  $request  Query: action, request_id, page
+     * @param  Request  $request Query: action, request_id, page
      * @return Response Inertia-страница Backoffice/AuditLogs
      */
     public function index(Request $request): Response

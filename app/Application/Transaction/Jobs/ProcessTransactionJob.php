@@ -9,13 +9,12 @@ use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Models\Transaction;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -30,16 +29,11 @@ use Throwable;
  * CurrencyMismatchException, SameAccountTransferException) пробрасываются
  * из processor → retry ×5 → failed() записывает failure_reason в агрегат.
  */
+#[Backoff(10)]
+#[Tries(5)]
 final class ProcessTransactionJob implements ShouldQueue
 {
-    use Dispatchable;
-    use InteractsWithQueue;
     use Queueable;
-    use SerializesModels;
-
-    public int $tries = 5;
-
-    public int $backoff = 10;
 
     public function __construct(
         public readonly int $transactionId,

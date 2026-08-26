@@ -7,7 +7,7 @@ namespace App\Policies;
 use App\Domain\Customer\Models\Customer;
 use App\Models\User;
 
-class CustomerPolicy
+final class CustomerPolicy
 {
     public function viewAny(User $user): bool
     {

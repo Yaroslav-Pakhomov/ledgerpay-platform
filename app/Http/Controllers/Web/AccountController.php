@@ -27,7 +27,7 @@ use Inertia\Response;
 final class AccountController extends Controller
 {
     /**
-     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     * @param AuditLogger $audit Сервис записи audit-событий
      */
     public function __construct(
         private readonly AuditLogger $audit,
@@ -39,12 +39,12 @@ final class AccountController extends Controller
      * Для backoffice — счёт создаётся для клиента из customer_uuid;
      * для обычного пользователя — для его собственного customer.
      *
-     * @param  StoreAccountRequest  $request  Валидированные данные (currency, опционально customer_uuid)
-     * @param  AccountService  $accountService  Сервис открытия счёта с проверкой статуса клиента
-     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     * @param  StoreAccountRequest $request        Валидированные данные (currency, опционально customer_uuid)
+     * @param  AccountService      $accountService Сервис открытия счёта с проверкой статуса клиента
+     * @return RedirectResponse    Redirect back с flash-сообщением об успехе
      *
-     * @throws AuthorizationException при отсутствии права create
-     * @throws ModelNotFoundException если customer не найден
+     * @throws AuthorizationException    при отсутствии права create
+     * @throws ModelNotFoundException    если customer не найден
      * @throws InactiveCustomerException если клиент неактивен
      */
     public function store(StoreAccountRequest $request, AccountService $accountService): RedirectResponse
@@ -80,7 +80,7 @@ final class AccountController extends Controller
     /**
      * История операций (ledger entries) по счёту.
      *
-     * @param  string  $uuid  UUID банковского счёта
+     * @param  string   $uuid UUID банковского счёта
      * @return Response Inertia-страница Dashboard/Ledger с данными счёта и пагинированными записями
      *
      * @throws ModelNotFoundException если счёт не найден

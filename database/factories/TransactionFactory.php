@@ -22,6 +22,7 @@ use Illuminate\Support\Str;
  */
 final class TransactionFactory extends Factory
 {
+    #[\Override]
     protected $model = Transaction::class;
 
     /**

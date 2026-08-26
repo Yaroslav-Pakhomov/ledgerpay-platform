@@ -26,7 +26,7 @@ use Inertia\Response;
 final class DashboardController extends Controller
 {
     /**
-     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     * @param AuditLogger $audit Сервис записи audit-событий
      */
     public function __construct(
         private readonly AuditLogger $audit,
@@ -37,7 +37,7 @@ final class DashboardController extends Controller
      *
      * Audit: {@see AuditAction::BackofficeDashboardViewed} — entity = auth user.
      *
-     * @param  Request  $request  Query: search (фильтр клиентов)
+     * @param  Request  $request Query: search (фильтр клиентов)
      * @return Response Inertia-страница Backoffice/Dashboard
      */
     public function __invoke(Request $request): Response

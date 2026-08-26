@@ -48,7 +48,7 @@ use Throwable;
 final class TransactionController extends Controller
 {
     /**
-     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     * @param AuditLogger $audit Сервис записи audit-событий
      */
     public function __construct(
         private readonly AuditLogger $audit,
@@ -60,13 +60,13 @@ final class TransactionController extends Controller
      * Данные из запроса упаковываются в DTO и передаются в TransactionService.
      * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @param  DepositRequest  $request  Валидированные данные (target_account_uuid, amount, currency)
-     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
-     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     * @param  DepositRequest     $request            Валидированные данные (target_account_uuid, amount, currency)
+     * @param  TransactionService $transactionService Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse   Redirect back с flash-сообщением об успехе
      *
      * @throws ModelNotFoundException если целевой счёт не найден
      * @throws AuthorizationException при отсутствии права view на счёт или create на Transaction
-     * @throws Throwable при ошибке транзакции БД в TransactionService
+     * @throws Throwable              при ошибке транзакции БД в TransactionService
      */
     public function deposit(DepositRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -99,13 +99,13 @@ final class TransactionController extends Controller
      * Данные из запроса упаковываются в DTO и передаются в TransactionService.
      * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @param  WithdrawRequest  $request  Валидированные данные (source_account_uuid, amount, currency)
-     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
-     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     * @param  WithdrawRequest    $request            Валидированные данные (source_account_uuid, amount, currency)
+     * @param  TransactionService $transactionService Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse   Redirect back с flash-сообщением об успехе
      *
      * @throws ModelNotFoundException если счёт-источник не найден
      * @throws AuthorizationException при отсутствии права view на счёт или create на Transaction
-     * @throws Throwable при ошибке транзакции БД в TransactionService
+     * @throws Throwable              при ошибке транзакции БД в TransactionService
      */
     public function withdraw(WithdrawRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -138,14 +138,14 @@ final class TransactionController extends Controller
      * Данные из запроса упаковываются в DTO и передаются в TransactionService.
      * Транзакция создаётся в статусе Pending и ставится в очередь на обработку.
      *
-     * @param  TransferRequest  $request  Валидированные данные (source_account_uuid, target_account_uuid,
-     *                                    amount, currency)
-     * @param  TransactionService  $transactionService  Сервис создания и постановки транзакции в очередь
-     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     * @param  TransferRequest    $request            Валидированные данные (source_account_uuid, target_account_uuid,
+     *                                                amount, currency)
+     * @param  TransactionService $transactionService Сервис создания и постановки транзакции в очередь
+     * @return RedirectResponse   Redirect back с flash-сообщением об успехе
      *
      * @throws ModelNotFoundException если один из счетов не найден
      * @throws AuthorizationException при отсутствии права view на счета или create на Transaction
-     * @throws Throwable при ошибке транзакции БД в TransactionService
+     * @throws Throwable              при ошибке транзакции БД в TransactionService
      */
     public function transfer(TransferRequest $request, TransactionService $transactionService): RedirectResponse
     {
@@ -181,9 +181,9 @@ final class TransactionController extends Controller
      * Требует права retry (эквивалент view на транзакцию).
      * Если транзакция не в статусе Failed, сервис вернёт её без повторной постановки в очередь.
      *
-     * @param  string  $uuid  UUID транзакции для повтора
-     * @param  TransactionService  $transactionService  Сервис повторной постановки транзакции в очередь
-     * @return RedirectResponse Redirect back с flash-сообщением об успехе
+     * @param  string             $uuid               UUID транзакции для повтора
+     * @param  TransactionService $transactionService Сервис повторной постановки транзакции в очередь
+     * @return RedirectResponse   Redirect back с flash-сообщением об успехе
      *
      * @throws ModelNotFoundException если транзакция не найдена
      * @throws AuthorizationException при отсутствии права retry

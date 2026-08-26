@@ -13,6 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class LedgerEntryResource extends JsonResource
 {
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [

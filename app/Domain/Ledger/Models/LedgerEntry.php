@@ -7,6 +7,8 @@ namespace App\Domain\Ledger\Models;
 use App\Domain\Account\Models\Account;
 use App\Domain\Ledger\Enums\LedgerDirection;
 use App\Domain\Transaction\Models\Transaction;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
@@ -29,31 +31,24 @@ use LogicException;
  * @property-read Transaction $transaction
  * @property-read Account     $account
  */
+#[Fillable([
+    'transaction_id',
+    'account_id',
+    'direction',
+    'amount',
+    'currency',
+    'balance_after',
+])]
+#[Table(name: 'ledger_entries')]
 final class LedgerEntry extends Model
 {
-    /**
-     * Таблица хранения ledger-записей.
-     */
-    protected $table = 'ledger_entries';
-
-    /**
-     * Разрешаем массовое заполнение атрибутов.
-     */
-    protected $fillable = [
-        'transaction_id',
-        'account_id',
-        'direction',
-        'amount',
-        'currency',
-        'balance_after',
-    ];
-
     /**
      * Запрещает изменение и удаление записей после создания.
      *
      * Ledger хранит историю операций — уже созданную запись
      * нельзя править или удалять, только добавлять новые.
      */
+    #[\Override]
     protected static function booted(): void
     {
         // Любая попытка изменить запись завершится ошибкой.
@@ -70,6 +65,7 @@ final class LedgerEntry extends Model
     /**
      * Преобразование атрибутов модели.
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

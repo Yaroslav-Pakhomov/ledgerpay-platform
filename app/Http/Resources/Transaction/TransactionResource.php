@@ -13,6 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class TransactionResource extends JsonResource
 {
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [

@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * @method string(string $string)
  */
-class ApiLoginRequest extends FormRequest
+final class ApiLoginRequest extends FormRequest
 {
     public function authorize(): bool
     {

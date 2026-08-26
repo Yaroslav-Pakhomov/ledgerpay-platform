@@ -14,14 +14,14 @@ use Symfony\Component\HttpFoundation\Response;
  * Проверяет, что пользователь авторизован и имеет права бэк-офиса.
  * Если проверка не пройдена, возвращает ошибку 403 Forbidden.
  *
- * @param  Closure(Request): Response  $next  Следующий middleware или обработчик запроса
+ * @param Closure(Request): Response $next Следующий middleware или обработчик запроса
  */
-class EnsureBackofficeUser
+final class EnsureBackofficeUser
 {
     /**
      * Handle an incoming request.
      *
-     * @param  Closure(Request): (Response)  $next
+     * @param Closure(Request): (Response) $next
      */
     public function handle(Request $request, Closure $next): Response
     {

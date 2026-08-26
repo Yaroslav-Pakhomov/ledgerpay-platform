@@ -11,6 +11,7 @@ use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Ledger\Models\LedgerEntry;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,8 +25,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * например в копейках/центах, а не в рублях/долларах.
  *
  * @property AccountStatus $status
- * @property mixed|null $email
+ * @property mixed|null    $email
  */
+#[Table(name: 'accounts')]
 final class Account extends Model
 {
     /**
@@ -39,21 +41,18 @@ final class Account extends Model
     use HasUuids;
 
     /**
-     * Явно указываем таблицу, с которой работает модель.
-     */
-    protected $table = 'accounts';
-
-    /**
      * Разрешаем массовое заполнение всех полей.
      *
      * В реальном проекте можно заменить на $fillable,
      * если нужно жестко контролировать поля.
      */
+    #[\Override]
     protected $guarded = [];
 
     /**
      * Приведение типов полей модели.
      */
+    #[\Override]
     protected function casts(): array
     {
         return [
@@ -70,6 +69,7 @@ final class Account extends Model
      *
      * @return array<int, string>
      */
+    #[\Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -83,6 +83,7 @@ final class Account extends Model
      *
      * Laravel будет искать счет по колонке uuid.
      */
+    #[\Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';

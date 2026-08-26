@@ -25,7 +25,7 @@ use Throwable;
 final class AuthController extends Controller
 {
     /**
-     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     * @param AuditLogger $audit Сервис записи audit-событий
      */
     public function __construct(
         private readonly AuditLogger $audit,
@@ -56,7 +56,7 @@ final class AuthController extends Controller
      *
      * Регенерирует session ID и перенаправляет на dashboard.
      *
-     * @param  LoginRequest  $request  Валидированный запрос с credentials
+     * @param  LoginRequest     $request Валидированный запрос с credentials
      * @return RedirectResponse Редирект на маршрут dashboard
      *
      * @throws ValidationException при неверных credentials или rate limit
@@ -78,8 +78,8 @@ final class AuthController extends Controller
     /**
      * Регистрация клиента: Customer + User, вход в сессию, редирект на dashboard.
      *
-     * @param  RegisterRequest  $request  Валидированные данные регистрации (name, email, password)
-     * @param  AuthService  $authService  Сервис атомарного создания Customer и User
+     * @param  RegisterRequest  $request     Валидированные данные регистрации (name, email, password)
+     * @param  AuthService      $authService Сервис атомарного создания Customer и User
      * @return RedirectResponse Редирект на маршрут dashboard
      *
      * @throws Throwable при ошибке транзакции в AuthService

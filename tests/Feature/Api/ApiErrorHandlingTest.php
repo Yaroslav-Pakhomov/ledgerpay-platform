@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Queue;
 use Tests\Feature\Api\Concerns\CreatesApiFixtures;
 use Tests\TestCase;
 
-class ApiErrorHandlingTest extends TestCase
+final class ApiErrorHandlingTest extends TestCase
 {
     use CreatesApiFixtures;
     use RefreshDatabase;

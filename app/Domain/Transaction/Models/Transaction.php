@@ -9,6 +9,7 @@ use App\Domain\Ledger\Models\LedgerEntry;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
 use Database\Factories\TransactionFactory;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,12 +28,13 @@ use Illuminate\Support\Carbon;
  * Сама транзакция хранит общую информацию об операции,
  * а фактические движения по счетам фиксируются в ledger_entries.
  *
- * @property TransactionType $type
+ * @property TransactionType   $type
  * @property TransactionStatus $status
- * @property Carbon|null $processed_at
+ * @property Carbon|null       $processed_at
  * @property-read Account|null $sourceAccount
  * @property-read Account|null $targetAccount
  */
+#[Table(name: 'transactions')]
 final class Transaction extends Model
 {
     /**
@@ -46,18 +48,15 @@ final class Transaction extends Model
     use HasUuids;
 
     /**
-     * Таблица, связанная с моделью.
-     */
-    protected $table = 'transactions';
-
-    /**
      * Разрешает массовое заполнение всех полей модели.
      */
+    #[\Override]
     protected $guarded = [];
 
     /**
      * Преобразование атрибутов модели.
      */
+    #[\Override]
     protected function casts(): array
     {
         return [
@@ -80,6 +79,7 @@ final class Transaction extends Model
      *
      * @return array<int, string>
      */
+    #[\Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -93,6 +93,7 @@ final class Transaction extends Model
      *
      * Laravel будет искать транзакцию по колонке uuid.
      */
+    #[\Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';

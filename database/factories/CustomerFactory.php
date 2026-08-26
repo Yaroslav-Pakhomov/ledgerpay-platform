@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class CustomerFactory extends Factory
 {
+    #[\Override]
     protected $model = Customer::class;
 
     /**

@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class AccountFactory extends Factory
 {
+    #[\Override]
     protected $model = Account::class;
 
     /**

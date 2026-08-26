@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
@@ -11,7 +13,7 @@ use Inertia\Middleware;
  * Здесь задаётся корневой Blade-шаблон и данные,
  * которые автоматически передаются во все Inertia-компоненты.
  */
-class HandleInertiaRequests extends Middleware
+final class HandleInertiaRequests extends Middleware
 {
     /**
      * The root template that is loaded on the first page visit.
@@ -23,6 +25,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @var string
      */
+    #[\Override]
     protected $rootView = 'app';
 
     /**
@@ -34,6 +37,7 @@ class HandleInertiaRequests extends Middleware
      *  в JavaScript и CSS-файлах. Если версия изменилась,
      *  выполняется полная перезагрузка страницы.
      */
+    #[\Override]
     public function version(Request $request): ?string
     {
         // Используем стандартную реализацию Inertia Middleware.
@@ -48,6 +52,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
+    #[\Override]
     public function share(Request $request): array
     {
         // Получаем текущего авторизованного пользователя.

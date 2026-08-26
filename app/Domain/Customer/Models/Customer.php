@@ -7,6 +7,7 @@ namespace App\Domain\Customer\Models;
 use App\Domain\Account\Models\Account;
 use App\Domain\Customer\Enums\CustomerStatus;
 use Database\Factories\CustomerFactory;
+use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property CustomerStatus $status
  */
+#[Table(name: 'customers')]
 final class Customer extends Model
 {
     /**
@@ -36,21 +38,18 @@ final class Customer extends Model
     use HasUuids;
 
     /**
-     * Таблица, связанная с моделью.
-     */
-    protected $table = 'customers';
-
-    /**
      * Разрешает массовое заполнение всех атрибутов.
      *
      * При необходимости можно заменить на $fillable
      * для более строгого контроля.
      */
+    #[\Override]
     protected $guarded = [];
 
     /**
      * Настройка преобразования типов атрибутов.
      */
+    #[\Override]
     protected function casts(): array
     {
         return [
@@ -65,6 +64,7 @@ final class Customer extends Model
      *
      * @return array<int, string>
      */
+    #[\Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -79,6 +79,7 @@ final class Customer extends Model
      * Laravel будет искать клиента по uuid,
      * а не по первичному ключу id.
      */
+    #[\Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';

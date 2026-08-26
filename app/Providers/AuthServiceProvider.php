@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 // use Illuminate\Support\ServiceProvider;
@@ -13,6 +15,7 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvid
 
 final class AuthServiceProvider extends ServiceProvider
 {
+    #[\Override]
     protected $policies = [
         Account::class     => AccountPolicy::class,
         Transaction::class => TransactionPolicy::class,
@@ -22,6 +25,7 @@ final class AuthServiceProvider extends ServiceProvider
     /**
      * Register services.
      */
+    #[\Override]
     public function register(): void
     {
         //

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use App\Http\Middleware\ApiRequestLoggingMiddleware;
 use App\Http\Middleware\EnsureBackofficeUser;

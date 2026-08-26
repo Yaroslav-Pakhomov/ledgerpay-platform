@@ -25,7 +25,7 @@ use Inertia\Response;
 final class CustomerController extends Controller
 {
     /**
-     * @param  AuditLogger  $audit  Сервис записи audit-событий
+     * @param AuditLogger $audit Сервис записи audit-событий
      */
     public function __construct(
         private readonly AuditLogger $audit,
@@ -37,7 +37,7 @@ final class CustomerController extends Controller
      * Audit: {@see AuditAction::BackofficeCustomerViewed} — `entity` = auth user,
      * `metadata.customer` — snapshot просмотренного клиента, `metadata.accounts` — ID счетов.
      *
-     * @param  string  $uuid  UUID клиента
+     * @param  string   $uuid UUID клиента
      * @return Response Inertia-страница Backoffice/CustomerShow
      */
     public function show(string $uuid): Response

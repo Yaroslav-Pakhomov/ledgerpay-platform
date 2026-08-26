@@ -8,10 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property mixed $uuid
- * @property mixed $name
- * @property mixed $email
- * @property mixed $status
+ * @property mixed      $uuid
+ * @property mixed      $name
+ * @property mixed      $email
+ * @property mixed      $status
  * @property mixed|null $created_at
  */
 final class CustomerResource extends JsonResource
@@ -21,6 +21,7 @@ final class CustomerResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [

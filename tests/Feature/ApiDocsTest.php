@@ -32,17 +32,13 @@ final class ApiDocsTest extends TestCase
 
     public function test_api_docs_ui_is_available_when_enabled(): void
     {
-        $this->get('/api/docs')
-            ->assertOk()
-            ->assertSee('swagger-ui', false);
+        $this->get('/api/docs')->assertOk()->assertSeeHtml('swagger-ui');
     }
 
     public function test_openapi_spec_returns_yaml(): void
     {
         $this->get('/api/docs/openapi.yaml')
-            ->assertOk()
-            ->assertHeader('Content-Type', 'application/yaml; charset=utf-8')
-            ->assertSee('openapi: 3.0.3', false);
+            ->assertOk()->assertHeader('Content-Type', 'application/yaml; charset=utf-8')->assertSeeHtml('openapi: 3.0.3');
     }
 
     public function test_api_docs_hidden_when_disabled(): void

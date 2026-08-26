@@ -33,12 +33,12 @@ final class AuditLogger
     /**
      * Создаёт append-only запись в журнале аудита.
      *
-     * @param  AuditAction  $auditAction  Тип события ({@see AuditAction})
-     * @param  Model|null  $entity  Затронутая сущность (User, Account, Transaction и т.д.)
-     * @param  array<string, mixed>  $metadata  Дополнительный контекст (amount, type, exception и т.д.)
-     * @param  Request|null  $request  HTTP-контекст; для async-событий — `null`
-     * @param  int|null  $actorUserId  ID инициатора; по умолчанию {@see Auth::id()}
-     * @return AuditLog Созданная immutable-запись
+     * @param  AuditAction          $auditAction Тип события ({@see AuditAction})
+     * @param  Model|null           $entity      Затронутая сущность (User, Account, Transaction и т.д.)
+     * @param  array<string, mixed> $metadata    Дополнительный контекст (amount, type, exception и т.д.)
+     * @param  Request|null         $request     HTTP-контекст; для async-событий — `null`
+     * @param  int|null             $actorUserId ID инициатора; по умолчанию {@see Auth::id()}
+     * @return AuditLog             Созданная immutable-запись
      */
     public function log(
         AuditAction $auditAction,

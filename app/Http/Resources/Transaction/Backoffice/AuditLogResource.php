@@ -28,6 +28,7 @@ final class AuditLogResource extends JsonResource
      *     created_at: string,
      * }
      */
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [

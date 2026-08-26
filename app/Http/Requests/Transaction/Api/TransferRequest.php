@@ -71,6 +71,7 @@ final class TransferRequest extends FormRequest
      * Убирает лишние пробелы в Idempotency-Key,
      * чтобы один и тот же ключ не считался разным.
      */
+    #[\Override]
     protected function prepareForValidation(): void
     {
         $this->headers->set(

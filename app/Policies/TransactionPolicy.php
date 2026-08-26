@@ -7,7 +7,7 @@ namespace App\Policies;
 use App\Domain\Transaction\Models\Transaction;
 use App\Models\User;
 
-class TransactionPolicy
+final class TransactionPolicy
 {
     /**
      * Determine whether the user can view any models.

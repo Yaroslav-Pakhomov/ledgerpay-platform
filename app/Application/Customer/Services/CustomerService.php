@@ -30,8 +30,8 @@ final class CustomerService
     public function create(CreateCustomerData $createCustomerData): Customer
     {
         return Customer::query()->create([
-            'name' => $createCustomerData->name,
-            'email' => $createCustomerData->email,
+            'name'   => $createCustomerData->name,
+            'email'  => $createCustomerData->email,
             'status' => CustomerStatus::Active,
         ]);
     }

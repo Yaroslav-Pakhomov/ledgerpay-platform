@@ -22,17 +22,18 @@ final class AccountResource extends JsonResource
      *
      * @return array<string, mixed>
      */
+    #[\Override]
     public function toArray(Request $request): array
     {
         return [
-            'uuid' => $this->uuid,
+            'uuid'          => $this->uuid,
             'customer_uuid' => $this->whenLoaded(
                 'customer',
                 fn () => $this->customer->uuid
             ),
-            'currency' => $this->currency,
-            'balance' => $this->balance,
-            'status' => $this->status->value,
+            'currency'   => $this->currency,
+            'balance'    => $this->balance,
+            'status'     => $this->status->value,
             'created_at' => $this->created_at?->toISOString(),
         ];
 
