@@ -5,7 +5,7 @@ name: CI Ledger pay
 on:
   push:
     # Каждый push в эти ветки (develop — разработка, master — релиз)
-    branches: [develop, master]
+    branches: [develop, master, "feature/**"]
   pull_request:
     # PR, направленные В эти ветки (например develop → master)
     branches: [develop, master]
@@ -76,9 +76,16 @@ jobs:
       - name: Build frontend
         run: npm run build              # Vite / Inertia — ловим ошибки сборки
 
-      - name: Run quality checks
-        # quality:ci — rector, pint --test, phpstan, test без coverage
-        # (локально: composer quality — pint --dirty + coverage)
-        run: composer quality:ci
+      - name: Laravel Pint
+        run: vendor/bin/pint --test
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Rector dry-run
+        run: vendor/bin/rector process --dry-run
+
+      - name: Tests
+        run: php artisan test
 
 

@@ -3,7 +3,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.5",
@@ -82,19 +85,31 @@
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ],
         "rector": [
-            "./vendor/bin/rector process"
+            "@php vendor/bin/rector process"
         ],
         "rector:dry": [
-            "vendor/bin/rector process --dry-run"
+            "@php vendor/bin/rector process --dry-run"
         ],
         "pint": [
             "@php pint --dirty"
         ],
+        "pint:fix": [
+            "pint"
+        ],
         "pint:ci": [
             "@php pint --test"
         ],
+        "pint:test": [
+            "@pint:ci"
+        ],
+        "stan": [
+            "@phpstan"
+        ],
         "phpstan": [
-            "./vendor/bin/phpstan analyse"
+            "@php vendor/bin/phpstan analyse --memory-limit=1G"
+        ],
+        "rector:test": [
+            "@rector:dry"
         ],
         "ide-helper": [
             "@php artisan ide-helper:generate",
@@ -102,16 +117,19 @@
             "@php artisan ide-helper:meta"
         ],
         "quality": [
-            "@rector:dry",
             "@pint",
             "@phpstan",
+            "@rector:dry",
             "@test"
         ],
         "quality:ci": [
-            "@rector:dry",
-            "@pint",
+            "@pint:ci",
             "@phpstan",
+            "@rector:dry",
             "@test:ci"
+        ],
+        "ci": [
+            "@quality:ci"
         ]
     },
     "extra": {

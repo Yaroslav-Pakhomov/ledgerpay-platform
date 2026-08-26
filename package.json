@@ -3,8 +3,9 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "dev": "vite",
         "build": "vite build",
-        "dev": "vite"
+        "lint:assets": "npm run build"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",

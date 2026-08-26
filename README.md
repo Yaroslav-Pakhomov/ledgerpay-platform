@@ -1,5 +1,7 @@
 # LedgerPay
 
+![CI](https://github.com/Yaroslav-Pakhomov/ledgerpay-platform/actions/workflows/ci.yml/badge.svg)
+
 **Fintech backend / portfolio project built with Laravel**
 
 LedgerPay — backend-система для работы с клиентами, счетами и денежными операциями.
@@ -542,53 +544,50 @@ Audit Event
 
 ### PHPStan / Larastan
 
-Статический анализ:
+Статический анализ (level 6):
 
 ```bash
-composer phpstan
+composer stan          # alias: composer phpstan
+make stan
 ```
 
 ---
 
 ### Laravel Pint
 
-Проверка форматирования:
-
 ```bash
-composer pint
+composer pint          # fix dirty files
+composer pint:test     # check all (CI)
+make pint-test
 ```
 
 ---
 
 ### Rector
 
-Проверка автоматических refactoring rules:
-
 ```bash
-composer rector:dry
+composer rector:test   # dry-run (CI)
+composer rector        # apply locally
+make rector-test
 ```
 
 ---
 
 ### Full Quality Check
 
-Локальная проверка:
-
 ```bash
-composer quality
+composer quality       # pint + stan + rector
+composer ci            # + tests (CI gate)
+make ci                # + frontend build
 ```
 
-Проверка для CI:
-
-```bash
-composer quality:ci
-```
+Подробнее: [docs/quality.md](./docs/quality.md).
 
 ---
 
 ## CI
 
-GitHub Actions запускается для push и pull request.
+GitHub Actions запускается для push и pull request в `develop`, `master`, `feature/**`.
 
 Pipeline включает:
 
@@ -802,6 +801,7 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 | Swagger architecture          | [swagger.md](./docs/architecture/swagger.md)                    |
 | Architecture Decision Records | [docs/architecture/README.md](./docs/architecture/README.md)    |
 | Context diagram               | [context.md](./docs/architecture/context.md)                    |
+| Code quality guide            | [quality.md](./docs/quality.md)                                 |
 | Detailed architecture         | [README_ARCHITECTURE.md](./README_ARCHITECTURE.md)              |
 
 ---

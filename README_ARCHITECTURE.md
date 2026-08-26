@@ -485,12 +485,15 @@ Factories (`AccountFactory`, `CustomerFactory`, `TransactionFactory`) живут
 ## 11. Качество кода
 
 ```bash
-composer quality     # rector:dry + pint + phpstan + test (локально)
-composer quality:ci  # то же для CI: pint --test, test:ci без coverage
-composer pint        # форматирование
-composer phpstan     # статический анализ (larastan)
-composer rector      # автоматический рефакторинг
+composer quality     # pint:test + stan + rector:test
+composer ci          # + test:ci (CI gate)
+make ci              # + npm run build
+composer pint        # fix dirty files
+composer stan        # PHPStan level 6
+composer rector      # apply refactoring
 ```
+
+Подробнее: [docs/quality.md](./docs/quality.md).
 
 - `declare(strict_types=1)` — везде.
 - `final` на сервисах и контроллерах — явный запрет на неожиданное наследование.
@@ -498,7 +501,7 @@ composer rector      # автоматический рефакторинг
 
 ### CI
 
-GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на push/PR в `develop` и `master` — PostgreSQL 18, `composer quality:ci`, `npm run build`, `php artisan migrate --force`.
+GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на push/PR в `develop`, `master`, `feature/**` — PostgreSQL 18, явные steps Pint / PHPStan / Rector / Tests, `npm run build`, `php artisan migrate --force`.
 
 ---
 

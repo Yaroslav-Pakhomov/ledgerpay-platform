@@ -2,13 +2,14 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
+    level: 6
+
     paths:
         - app
         - routes
         - database/factories
         - database/seeders
-
-    level: 5
+        - tests
 
     parseModelCastsMethod: true
 
@@ -16,3 +17,12 @@ parameters:
         - bootstrap/cache
         - storage
         - vendor
+        - node_modules
+
+    ignoreErrors:
+        -
+            identifier: missingType.iterableValue
+        -
+            identifier: missingType.generics
+        -
+            identifier: missingType.parameter

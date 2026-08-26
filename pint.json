@@ -1,6 +1,12 @@
 {
     "preset": "laravel",
     "rules": {
+        "declare_strict_types": true,
+        "final_class": true,
+        "no_unused_imports": true,
+        "ordered_imports": {
+            "sort_algorithm": "alpha"
+        },
         "not_operator_with_successor_space": false,
         "unary_operator_spaces": true,
         "binary_operator_spaces": {
@@ -8,6 +14,15 @@
             "operators": {
                 "=>": "align_single_space_minimal"
             }
+        },
+        "phpdoc_align": {
+            "align": "vertical"
         }
-    }
+    },
+    "exclude": [
+        "storage",
+        "bootstrap/cache",
+        "vendor",
+        "node_modules"
+    ]
 }
