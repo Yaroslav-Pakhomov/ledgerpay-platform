@@ -69,6 +69,7 @@ jobs:
       - name: Prepare Laravel
         run: |
           mkdir -p storage/framework/{cache/data,sessions,views,testing}
+          mkdir -p storage/framework/cache/rector/container
           cp .env.example .env
           php artisan key:generate
           php artisan migrate --force   # env job'а переопределяет DB_* из .env

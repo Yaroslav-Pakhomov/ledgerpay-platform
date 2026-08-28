@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domain\Account\Models\Account;
 use App\Domain\Ledger\Enums\LedgerDirection;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Transaction\Enums\TransactionType;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
@@ -30,6 +31,7 @@ final class LedgerImmutabilityTest extends TestCase
             ->create();
 
         $transaction = Transaction::factory()->create([
+            'type'              => TransactionType::Deposit,
             'target_account_id' => $account->id,
             'source_account_id' => null,
         ]);
@@ -58,6 +60,7 @@ final class LedgerImmutabilityTest extends TestCase
             ->create();
 
         $transaction = Transaction::factory()->create([
+            'type'              => TransactionType::Deposit,
             'target_account_id' => $account->id,
             'source_account_id' => null,
         ]);

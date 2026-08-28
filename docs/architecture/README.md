@@ -7,6 +7,8 @@
 | [ADR-002: Immutable ledger](./adr-002-immutable-ledger.md) | Неизменяемый финансовый журнал |
 | [ADR-003: Async transaction processing](./adr-003-async-transaction-processing.md) | Асинхронная обработка транзакций |
 | [ADR-004: Idempotency](./adr-004-idempotency.md) | Ключи идемпотентности для движения средств |
+| [ADR-005: Database hardening](./adr-005-database-hardening.md) | CHECK constraints, immutability triggers, indexes |
+| [Query Plan Inspector](../database/query-plan-inspector.md) | EXPLAIN / EXPLAIN ANALYZE для проверки индексов |
 | [swagger.md](./swagger.md) | OpenAPI + Swagger UI: архитектура и сценарий Try it out |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

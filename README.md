@@ -732,6 +732,21 @@ Ledger используется как append-only история реально
 
 Audit хранит историю действий приложения и пользователей.
 
+### Database-level invariants
+
+Критичные финансовые инварианты enforced в PostgreSQL:
+
+- non-negative account balances;
+- positive transaction amounts;
+- valid transaction account shape (deposit / withdrawal / transfer);
+- immutable ledger entries (DB triggers);
+- immutable audit logs (DB triggers);
+- partial indexes для мониторинга failed/pending транзакций.
+
+Это защищает систему даже при обходе application-level validation.
+
+Подробнее: [ADR-005](./docs/architecture/adr-005-database-hardening.md).
+
 ### Typed DTO
 
 Transport data отделена от бизнес-логики.
@@ -802,6 +817,7 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 | Architecture Decision Records | [docs/architecture/README.md](./docs/architecture/README.md)    |
 | Context diagram               | [context.md](./docs/architecture/context.md)                    |
 | Code quality guide            | [quality.md](./docs/quality.md)                                 |
+| Query plan inspector            | [query-plan-inspector.md](./docs/database/query-plan-inspector.md) |
 | Detailed architecture         | [README_ARCHITECTURE.md](./README_ARCHITECTURE.md)              |
 
 ---
