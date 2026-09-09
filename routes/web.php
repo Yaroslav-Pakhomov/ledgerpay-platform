@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\Backoffice\AuditLogController as BackofficeAuditLogController;
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
+use App\Http\Controllers\Web\Backoffice\OutboxController;
 use App\Http\Controllers\Web\Backoffice\TransactionController as BackofficeTransactionController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\TransactionController;
@@ -85,6 +86,9 @@ Route::middleware('auth')->group(function (): void {
 
         // Список логов
         Route::get('/audit-logs', [BackofficeAuditLogController::class, 'index'])->name('audit-logs.index');
+
+        // Список опубликованных операций
+        Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
     });
 });
 

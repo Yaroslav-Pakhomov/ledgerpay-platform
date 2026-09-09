@@ -78,6 +78,10 @@ function money(amount, currency) {
                     <Link :href="route('backoffice.audit-logs.index')" class="text-indigo-400 hover:text-indigo-300">
                         Журнал аудита →
                     </Link>
+
+                    <Link :href="route('backoffice.outbox.index')" class="text-indigo-400 hover:text-indigo-300">
+                        Outbox →
+                    </Link>
                 </div>
             </div>
 

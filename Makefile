@@ -14,7 +14,10 @@ test:
 	./vendor/bin/sail artisan test
 
 worker:
-	./vendor/bin/sail artisan queue:work redis --queue=transactions,default
+	./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
+
+schedule:
+	./vendor/bin/sail artisan schedule:work
 
 dev:
 	./vendor/bin/sail npm run dev

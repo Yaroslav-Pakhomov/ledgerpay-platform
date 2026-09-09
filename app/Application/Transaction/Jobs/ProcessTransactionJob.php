@@ -15,6 +15,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -27,7 +28,8 @@ use Throwable;
  *
  * Доменные ошибки (InsufficientFundsException, InactiveAccountException,
  * CurrencyMismatchException, SameAccountTransferException) пробрасываются
- * из processor → retry ×5 → failed() записывает failure_reason в агрегат.
+ * из processor → retry ×5 → failed() записывает Failed, outbox `transaction.failed`
+ * и audit {@see AuditAction::TransactionFailed}.
  */
 #[Backoff(10)]
 #[Tries(5)]
@@ -69,7 +71,7 @@ final class ProcessTransactionJob implements ShouldQueue
      *
      * @throws Throwable
      */
-    public function handle(TransactionProcessorService $processor): void
+    public function handle(TransactionProcessorService $transactionProcessor): void
     {
         Log::info('Transaction processing started.', [
             'transaction_id' => $this->transactionId,
@@ -93,7 +95,7 @@ final class ProcessTransactionJob implements ShouldQueue
             return;
         }
 
-        $processed = $processor->process($transaction);
+        $processed = $transactionProcessor->process($transaction);
 
         // Audit: TransactionCompleted — без HTTP context, actor_user_id = null.
         app(AuditLogger::class)->log(
@@ -114,9 +116,8 @@ final class ProcessTransactionJob implements ShouldQueue
     /**
      * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
      *
-     * После update агрегата пишет {@see AuditAction::TransactionFailed}
-     * через {@see AuditLogger}. `failure_reason` сохраняет доменное
-     * сообщение исключения для API и аудита.
+     * В одной DB-транзакции: Failed + outbox `transaction.failed`.
+     * Затем — {@see AuditAction::TransactionFailed} через {@see AuditLogger}.
      */
     public function failed(Throwable $exception): void
     {
@@ -126,14 +127,20 @@ final class ProcessTransactionJob implements ShouldQueue
             return;
         }
 
-        $transaction->update([
-            'status'         => TransactionStatus::Failed,
-            'failure_reason' => $exception->getMessage(),
-        ]);
+        /** Уже Failed — outbox-событие не дублируем. */
+        if ($transaction->status === TransactionStatus::Failed) {
+            return;
+        }
+
+        $transactionProcessor = app(TransactionProcessorService::class);
+
+        $failedTransaction = DB::transaction(
+            fn (): Transaction => $transactionProcessor->failWithOutbox($transaction, $exception),
+        );
 
         app(AuditLogger::class)->log(
             auditAction: AuditAction::TransactionFailed,
-            entity: $transaction,
+            entity: $failedTransaction,
             metadata: [
                 'exception_class' => $exception::class,
                 'message'         => $exception->getMessage(),

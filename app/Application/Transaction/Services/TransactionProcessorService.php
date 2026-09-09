@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Application\Transaction\Services;
 
 use App\Application\Ledger\Services\LedgerService;
+use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
@@ -29,14 +31,18 @@ use Throwable;
  * - перевести транзакцию в итоговый статус.
  *
  * Все денежные операции выполняются внутри DB transaction,
- * чтобы изменение баланса, создание ledger-записей и смена статуса
- * происходили как единое атомарное действие.
+ * чтобы изменение баланса, создание ledger-записей, запись outbox-события
+ * `transaction.completed` и смена статуса происходили как единое атомарное действие.
+ *
+ * Терминальный сбой обработки (`transaction.failed`) фиксируется через
+ * {@see self::failWithOutbox()} из {@see ProcessTransactionJob::failed()}.
  */
 final readonly class TransactionProcessorService
 {
     public function __construct(
         private LedgerService $ledger,
         private TransferPolicy $transferPolicy,
+        private OutboxWriter $outboxWriter,
     ) {}
 
     /**
@@ -105,7 +111,9 @@ final readonly class TransactionProcessorService
                 'failure_reason' => null,
             ]);
 
-            return $transaction->refresh();
+            $this->recordTransactionCompleted($transaction->refresh());
+
+            return $transaction;
         });
     }
 
@@ -147,7 +155,9 @@ final readonly class TransactionProcessorService
                 'failure_reason' => null,
             ]);
 
-            return $transaction->refresh();
+            $this->recordTransactionCompleted($transaction->refresh());
+
+            return $transaction;
         });
     }
 
@@ -222,7 +232,9 @@ final readonly class TransactionProcessorService
                 'failure_reason' => null,
             ]);
 
-            return $transaction->refresh();
+            $this->recordTransactionCompleted($transaction->refresh());
+
+            return $transaction;
         });
     }
 
@@ -255,18 +267,71 @@ final readonly class TransactionProcessorService
     }
 
     /**
-     * Переводит транзакцию в статус Failed.
+     * Переводит транзакцию в Failed и записывает outbox `transaction.failed`.
      *
-     * Используется вызывающим сервисом, если при обработке
-     * была нарушена бизнес-логика или произошла техническая ошибка.
+     * Вызывается из {@see ProcessTransactionJob::failed()}
+     * внутри DB-транзакции. Caller обязан проверить, что status !== Failed (idempotency).
      */
-    public function markAsFailed(Transaction $transaction, Throwable $exception): Transaction
+    public function failWithOutbox(Transaction $transaction, Throwable $exception): Transaction
     {
         $transaction->update([
             'status'         => TransactionStatus::Failed,
             'failure_reason' => $exception->getMessage(),
         ]);
 
-        return $transaction->refresh();
+        $transaction = $transaction->refresh();
+
+        $this->recordTransactionFailed($transaction, $exception);
+
+        return $transaction;
+    }
+
+    /**
+     * Записывает outbox-событие transaction.completed для downstream-потребителей.
+     *
+     * Вызывается внутри DB-транзакции processDeposit/Withdrawal/Transfer
+     * сразу после перевода агрегата в {@see TransactionStatus::Completed}.
+     *
+     * @param Transaction $transaction Завершённая транзакция (refresh после update)
+     */
+    private function recordTransactionCompleted(Transaction $transaction): void
+    {
+        $this->outboxWriter->record(
+            eventName: 'transaction.completed',
+            aggregate: $transaction,
+            payload: [
+                'transaction_uuid'  => $transaction->uuid,
+                'type'              => $transaction->type->value,
+                'amount'            => $transaction->amount,
+                'currency'          => $transaction->currency,
+                'source_account_id' => $transaction->source_account_id,
+                'target_account_id' => $transaction->target_account_id,
+                'processed_at'      => $transaction->processed_at->toISOString(),
+            ],
+        );
+    }
+
+    /**
+     * Записывает outbox-событие transaction.failed для downstream-потребителей.
+     *
+     * @param Transaction $transaction Транзакция с заполненным failure_reason
+     * @param Throwable   $exception   Исключение, приведшее к сбою
+     */
+    private function recordTransactionFailed(Transaction $transaction, Throwable $exception): void
+    {
+        $this->outboxWriter->record(
+            eventName: 'transaction.failed',
+            aggregate: $transaction,
+            payload: [
+                'transaction_uuid'  => $transaction->uuid,
+                'type'              => $transaction->type->value,
+                'amount'            => $transaction->amount,
+                'currency'          => $transaction->currency,
+                'source_account_id' => $transaction->source_account_id,
+                'target_account_id' => $transaction->target_account_id,
+                'failure_reason'    => $transaction->failure_reason,
+                'exception_class'   => $exception::class,
+            ],
+        );
     }
 }

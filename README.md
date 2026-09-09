@@ -663,7 +663,13 @@ composer install
 Запуск worker:
 
 ```bash
-./vendor/bin/sail artisan queue:work redis --queue=transactions,default
+./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
+```
+
+Для outbox также нужен scheduler:
+
+```bash
+./vendor/bin/sail artisan schedule:work
 ```
 
 ---
@@ -746,6 +752,22 @@ Audit хранит историю действий приложения и по�
 Это защищает систему даже при обходе application-level validation.
 
 Подробнее: [ADR-005](./docs/architecture/adr-005-database-hardening.md).
+
+### Outbox pattern
+
+LedgerPay записывает доменные события в `outbox_messages` в той же DB-транзакции, что и бизнес-изменение.
+
+События транзакции:
+
+- `transaction.created` — операция заведена (Pending);
+- `transaction.completed` — деньги успешно обработаны;
+- `transaction.failed` — терминальный сбой после retry.
+
+Отдельная команда dispatch'ит pending-сообщения в queue workers.
+
+Это предотвращает классическую проблему: DB commit успешен, а публикация события — нет.
+
+Подробнее: [ADR-006](./docs/architecture/adr-006-outbox-pattern.md).
 
 ### Typed DTO
 

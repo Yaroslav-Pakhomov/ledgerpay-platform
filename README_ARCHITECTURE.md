@@ -514,7 +514,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 | **Event Sourcing** | История хранится как поток событий, состояние — их проекция; удобно для аудита и replay | Избыточно на текущем масштабе; `ledger_entries` + `audit_logs` уже дают audit trail |
 | **Repository interfaces** | Абстракция доступа к БД поверх ORM; «чистый» DDD | Eloquent достаточно; меньше boilerplate, модели уже в Domain |
 | **CQRS** | Разные модели для записи и чтения (command vs query) | Read-сценарии простые (списки, выписки); усложнение не окупается |
-| **Saga / Outbox** | Outbox — надёжная доставка событий вовне; Saga — распределённые транзакции между сервисами | Одна БД, один worker; при multi-service — естественный next step |
+| **Saga / Outbox** | Outbox — надёжная доставка событий вовне (`transaction.created`, `transaction.completed`, `transaction.failed`); Saga — распределённые транзакции между сервисами | Outbox реализован; Saga — при multi-service |
 | **Scoped idempotency** | Ключ идемпотентности уникален в рамках клиента, а не глобально | Сейчас global unique — проще для MVP |
 | **Классический double-entry (дебет = кредит всегда)** | Каждая операция — парные проводки на план счетов | Deposit/withdraw — односторонние проводки; transfer — debit + credit; достаточно для demo |
 
@@ -534,7 +534,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 
 1. **Scoped idempotency** — `(customer_id, idempotency_key)` unique вместо global; ключ уникален в рамках клиента, а не всей системы — разные клиенты могут использовать одинаковые ключи без конфликта.
 2. **Rate limiting и scoped tokens** — расширить throttling на API auth и money movement (web login уже ограничен в `LoginRequest`); Sanctum abilities per scope — минимальные права токена.
-3. **Outbox** — если появятся внешние интеграции (webhooks, billing); событие пишется в БД вместе с проводкой и гарантированно уходит наружу — webhook не теряется при сбое после commit.
+3. **Outbox** — реализован (ADR-006): `transaction.created` / `transaction.completed` / `transaction.failed`.
 4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
 5. **Reconciliation job** — сверка `accounts.balance` с журналом проводок; периодически проверяет их совпадение — раннее обнаружение расхождений и багов.
 6. **Observability** — Telescope в dev; добавить **OpenAPI lint** в CI (`quality:ci` и `npm run build` уже в [GitHub Actions](./.github/workflows/ci.yml)).

@@ -10,5 +10,6 @@
 | [ADR-005: Database hardening](./adr-005-database-hardening.md) | CHECK constraints, immutability triggers, indexes |
 | [Query Plan Inspector](../database/query-plan-inspector.md) | EXPLAIN / EXPLAIN ANALYZE для проверки индексов |
 | [swagger.md](./swagger.md) | OpenAPI + Swagger UI: архитектура и сценарий Try it out |
+| [ADR-006: Outbox pattern](./adr-006-outbox-pattern.md) | Transactional outbox для надёжной публикации доменных событий |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

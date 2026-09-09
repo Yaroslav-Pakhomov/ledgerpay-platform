@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Transaction\Services;
 
+use App\Application\Outbox\Services\OutboxWriter;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
@@ -19,11 +20,18 @@ use Throwable;
 /**
  * Application Service для создания и постановки транзакций в очередь.
  *
- *  HTTP-слой создает транзакцию в статусе Pending и dispatch'ит job.
- *  Фактическое движение денег выполняет TransactionProcessorService в worker'е.
+ * HTTP-слой создает транзакцию в статусе Pending, записывает outbox-событие
+ * `transaction.created` через {@see OutboxWriter} (в той же DB-транзакции)
+ * и dispatch'ит {@see ProcessTransactionJob}.
+ *
+ * Фактическое движение денег выполняет {@see TransactionProcessorService} в worker'е.
  */
 final readonly class TransactionService
 {
+    public function __construct(
+        private OutboxWriter $outboxWriter,
+    ) {}
+
     /**
      * Создает операцию пополнения счета.
      *
@@ -245,8 +253,27 @@ final readonly class TransactionService
                 );
             }
 
+            $transaction = $callbackTransaction();
+
+            /**
+             * Outbox: transaction.created — в той же DB-транзакции, что и INSERT transaction.
+             * Гарантирует, что downstream узнает о создании операции после commit.
+             */
+            $this->outboxWriter->record(
+                eventName: 'transaction.created',
+                aggregate: $transaction,
+                payload: [
+                    'transaction_uuid'  => $transaction->uuid,
+                    'type'              => $transaction->type->value,
+                    'amount'            => $transaction->amount,
+                    'currency'          => $transaction->currency,
+                    'source_account_id' => $transaction->source_account_id,
+                    'target_account_id' => $transaction->target_account_id,
+                ],
+            );
+
             return new TransactionCreationResult(
-                transaction: $callbackTransaction(),
+                transaction: $transaction,
                 created: true,
             );
         });
