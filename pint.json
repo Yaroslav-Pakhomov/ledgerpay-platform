@@ -12,11 +12,15 @@
         "binary_operator_spaces": {
             "default": "single_space",
             "operators": {
+                "=": "align_single_space_minimal",
                 "=>": "align_single_space_minimal"
             }
         },
         "phpdoc_align": {
             "align": "vertical"
+        },
+        "concat_space": {
+            "spacing": "one"
         }
     },
     "exclude": [
