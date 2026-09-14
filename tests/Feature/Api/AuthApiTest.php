@@ -79,4 +79,19 @@ final class AuthApiTest extends TestCase
 
         $response->assertUnauthorized();
     }
+
+    public function test_guest_receives_json_401_even_with_wildcard_accept_header(): void
+    {
+        $response = $this->post('/api/accounts', [
+            'currency' => 'RUB',
+        ], [
+            'Accept'       => '*/*',
+            'Content-Type' => 'application/json',
+        ]);
+
+        $response->assertUnauthorized()
+            ->assertHeader('Content-Type', 'application/problem+json')
+            ->assertJsonPath('title', 'Unauthenticated')
+            ->assertJsonPath('status', 401);
+    }
 }

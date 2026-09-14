@@ -25,9 +25,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -46,9 +46,24 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        /**
+         * Определяет, что ответ должен быть JSON (Problem Details), а не HTML.
+         *
+         * Срабатывает для маршрутов api/* (включая Accept: *\*)
+         * или когда Request::expectsJson() === true.
+         * shouldRenderJsonWhen() подключает это же правило к стандартному
+         * рендерингу исключений Laravel (до кастомных render-обработчиков).
+         */
+        $wantsApiResponse = static function (Request $request): bool {
+            return $request->is('api/*') || $request->expectsJson();
+        };
+
+        $exceptions->shouldRenderJsonWhen(
+            fn (Request $request, Throwable $e): bool => $wantsApiResponse($request),
+        );
 
         /**
-         * Некорректные входящие данные - 422
+         * Некорректные входящие данные — 422
          *
          * Обрабатывает ошибки валидации входящих данных.
          *
@@ -60,17 +75,8 @@ return Application::configure(basePath: dirname(__DIR__))
          *  Laravel выбрасывает ValidationException, когда данные
          *  не проходят правила валидации FormRequest или Validator.
          */
-        $exceptions->render(function (ValidationException $exception, Request $request) {
-            /*
-             * Обработчик применяется только тогда, когда клиент ожидает JSON.
-             *
-             * Обычно это запросы с заголовком: "Accept: application/json"
-             *
-             * Если клиент ожидает HTML, возвращаем null.
-             * Это означает: Laravel должен обработать исключение стандартным способом,
-             * например вернуть пользователя назад с ошибками в сессии.
-             */
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (ValidationException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
@@ -91,7 +97,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * Запись в базе не найдена - 404
+         * Запись в базе не найдена — 404
          *
          * Обрабатывает ситуацию, когда запись Eloquent не найдена.
          *
@@ -102,8 +108,8 @@ return Application::configure(basePath: dirname(__DIR__))
          *
          *  Или при автоматическом Route Model Binding.
          */
-        $exceptions->render(function (ModelNotFoundException $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (ModelNotFoundException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
@@ -133,13 +139,13 @@ return Application::configure(basePath: dirname(__DIR__))
          * - запрошенный маршрут не зарегистрирован;
          * - URL указан неверно;
          * - вызывается abort(404);
-         * - Laravel или Symfony не удалось найти запрашиваемый HTTP-ресурс.
+         * - фреймворку не удалось найти запрашиваемый HTTP-ресурс.
          *
          * В отличие от ModelNotFoundException, это исключение относится
          * не обязательно к записи в базе данных, а к HTTP-уровню приложения.
          */
-        $exceptions->render(function (NotFoundHttpException $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (NotFoundHttpException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
@@ -160,7 +166,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * Нарушено бизнес-правило - 409
+         * Нарушено бизнес-правило — 409
          *
          * Обрабатывает нарушения бизнес-правил приложения.
          *
@@ -176,8 +182,8 @@ return Application::configure(basePath: dirname(__DIR__))
          *  Благодаря интерфейсу не нужно регистрировать отдельный обработчик
          *  для каждого доменного исключения.
          */
-        $exceptions->render(function (IDomainRuleViolation $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (IDomainRuleViolation $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
@@ -192,18 +198,14 @@ return Application::configure(basePath: dirname(__DIR__))
              * - недостаточно средств;
              * - счёт заблокирован;
              * - валюты счетов не совпадают.
+             *
+             * Клиенту передаётся сообщение конкретного доменного исключения,
+             * поэтому такие сообщения должны быть безопасными
+             * и не содержать технических подробностей.
              */
             return ProblemDetails::make(
                 request: $request,
                 title: 'Domain rule violation',
-
-                /*
-                 * Клиенту передаётся сообщение конкретного
-                 * доменного исключения.
-                 *
-                 * Поэтому сообщения таких исключений должны быть безопасными
-                 * и не содержать технических подробностей.
-                 */
                 detail: $exception->getMessage(),
 
                 status: Response::HTTP_CONFLICT,
@@ -212,7 +214,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * Пользователь не авторизован - 401
+         * Пользователь не авторизован — 401
          *
          * Обрабатывает запросы от неавторизованного пользователя.
          *
@@ -223,14 +225,13 @@ return Application::configure(basePath: dirname(__DIR__))
          *  - передал недействительный токен;
          *  - не имеет активной аутентифицированной сессии.
          */
-        $exceptions->render(function (AuthenticationException $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (AuthenticationException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
             /*
-             * Для API возвращаем JSON с кодом 401 вместо HTML-редиректа
-             * на страницу входа.
+             * Возвращаем JSON с кодом 401 вместо HTML-редиректа на страницу входа.
              */
             return ProblemDetails::make(
                 request: $request,
@@ -258,13 +259,13 @@ return Application::configure(basePath: dirname(__DIR__))
          * может быть успешно аутентифицирован, но не иметь разрешения
          * на выполнение конкретного действия.
          */
-        $exceptions->render(function (AuthorizationException $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (AuthorizationException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
             /*
-             * Для API возвращаем единообразный JSON-ответ с кодом 403,
+             * Возвращаем единообразный JSON-ответ с кодом 403,
              * не раскрывая клиенту внутренние правила Gate или Policy.
              */
             return ProblemDetails::make(
@@ -293,8 +294,8 @@ return Application::configure(basePath: dirname(__DIR__))
          * возвращались в том же формате Problem Details, что и Laravel-ошибки
          * авторизации.
          */
-        $exceptions->render(function (AccessDeniedHttpException $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (AccessDeniedHttpException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
@@ -312,7 +313,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         /**
-         * Все остальные ошибки - Исходный HTTP-код или 500
+         * Все остальные ошибки — исходный HTTP-код или 500
          *
          * Универсальный обработчик всех остальных исключений.
          *
@@ -329,8 +330,8 @@ return Application::configure(basePath: dirname(__DIR__))
          *  иначе он может перехватить исключения раньше специализированных
          *  обработчиков выше.
          */
-        $exceptions->render(function (Throwable $exception, Request $request) {
-            if (!$request->expectsJson()) {
+        $exceptions->render(function (Throwable $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
                 return null;
             }
 
