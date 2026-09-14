@@ -769,6 +769,30 @@ LedgerPay записывает доменные события в `outbox_messag
 
 Подробнее: [ADR-006](./docs/architecture/adr-006-outbox-pattern.md).
 
+### Kafka / Redpanda (local dev)
+
+При `KAFKA_ENABLED=true` outbox-события дополнительно публикуются в Kafka topic.
+
+**Broker + UI:**
+
+```bash
+make kafka-up
+make kafka-topic
+```
+
+**Redpanda Console:** http://localhost:8081
+
+**Smoke test:**
+
+```bash
+make worker
+make schedule
+# deposit через API
+make kafka-consume   # или Console → Topics → ledgerpay.domain-events
+```
+
+CI и PHPUnit используют `KAFKA_ENABLED=false`.
+
 ### Typed DTO
 
 Transport data отделена от бизнес-логики.

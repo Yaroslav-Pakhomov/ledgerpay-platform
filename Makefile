@@ -19,6 +19,21 @@ worker:
 schedule:
 	./vendor/bin/sail artisan schedule:work
 
+kafka-up:
+	./vendor/bin/sail up -d redpanda redpanda-console
+
+kafka-topic:
+	./vendor/bin/sail exec redpanda rpk topic create ledgerpay.domain-events || true
+
+kafka-consume:
+	./vendor/bin/sail exec redpanda rpk topic consume ledgerpay.domain-events -f
+
+kafka-demo:
+	./vendor/bin/sail artisan kafka:consume-demo
+
+kafka-console:
+	@echo "Redpanda Console: http://localhost:8081"
+
 dev:
 	./vendor/bin/sail npm run dev
 
