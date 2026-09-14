@@ -249,8 +249,8 @@ final class TransactionApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $customer = $this->createCustomer();
-        $source = $this->createAccount($customer, currency: 'USD');
-        $target = $this->createAccount($customer, currency: 'USD');
+        $source   = $this->createAccount($customer, currency: 'USD');
+        $target   = $this->createAccount($customer, currency: 'USD');
         $this->actingAsCustomerFor($source);
 
         $this->depositToAccount($source, 5000, 'fund-for-transfer');
@@ -287,8 +287,8 @@ final class TransactionApiTest extends TestCase
     public function test_transfer_fails_when_insufficient_funds(): void
     {
         $customer = $this->createCustomer();
-        $source = $this->createAccount($customer);
-        $target = $this->createAccount($customer);
+        $source   = $this->createAccount($customer);
+        $target   = $this->createAccount($customer);
 
         $this->actingAsCustomerFor($source);
 
@@ -361,11 +361,11 @@ final class TransactionApiTest extends TestCase
         $account = $this->createAccount($this->createCustomer());
         $this->actingAsCustomerFor($account);
 
-        $deposit = $this->depositToAccount($account, 1000, 'show-deposit-001');
+        $deposit         = $this->depositToAccount($account, 1000, 'show-deposit-001');
         $transactionUuid = $deposit->json('data.uuid');
 
         $this->actingAsBackoffice();
-        $response = $this->getJson('/api/transactions/'.$transactionUuid);
+        $response = $this->getJson('/api/transactions/' . $transactionUuid);
 
         $response->assertOk()
             ->assertJsonPath('uuid', $transactionUuid)
@@ -378,7 +378,7 @@ final class TransactionApiTest extends TestCase
     {
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/transactions/'.Str::uuid()->toString());
+        $response = $this->getJson('/api/transactions/' . Str::uuid()->toString());
 
         $response->assertNotFound();
     }

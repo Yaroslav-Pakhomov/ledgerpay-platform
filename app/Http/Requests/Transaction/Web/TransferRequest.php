@@ -63,6 +63,6 @@ final class TransferRequest extends FormRequest
      */
     public function idempotencyKey(): string
     {
-        return 'web-transfer-'.Str::uuid()->toString();
+        return 'web-transfer-' . Str::uuid()->toString();
     }
 }

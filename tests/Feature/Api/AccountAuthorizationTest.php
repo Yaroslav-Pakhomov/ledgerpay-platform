@@ -26,14 +26,14 @@ final class AccountAuthorizationTest extends TestCase
 
         $this->actingAs($user, 'sanctum');
 
-        $this->getJson('/api/accounts/'.$account->uuid)
+        $this->getJson('/api/accounts/' . $account->uuid)
             ->assertOk()
             ->assertJsonPath('data.uuid', $account->uuid);
     }
 
     public function test_customer_cannot_view_foreign_account(): void
     {
-        $ownCustomer = Customer::factory()->create();
+        $ownCustomer     = Customer::factory()->create();
         $foreignCustomer = Customer::factory()->create();
 
         $user = User::factory()->forCustomer($ownCustomer)->create();
@@ -44,7 +44,7 @@ final class AccountAuthorizationTest extends TestCase
 
         $this->actingAs($user, 'sanctum');
 
-        $this->getJson('/api/accounts/'.$foreignAccount->uuid)
+        $this->getJson('/api/accounts/' . $foreignAccount->uuid)
             ->assertForbidden()
             ->assertJsonPath('title', 'Forbidden');
     }
@@ -57,7 +57,7 @@ final class AccountAuthorizationTest extends TestCase
 
         $this->actingAs($backoffice, 'sanctum');
 
-        $this->getJson('/api/accounts/'.$account->uuid)
+        $this->getJson('/api/accounts/' . $account->uuid)
             ->assertOk()
             ->assertJsonPath('data.uuid', $account->uuid);
     }

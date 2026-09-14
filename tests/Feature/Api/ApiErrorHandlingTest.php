@@ -61,7 +61,7 @@ final class ApiErrorHandlingTest extends TestCase
         $account = Account::factory()->create();
         $this->actingAsCustomerFor($account);
 
-        $response = $this->getJson('/api/accounts/'.$account->uuid);
+        $response = $this->getJson('/api/accounts/' . $account->uuid);
 
         $response->assertOk();
 

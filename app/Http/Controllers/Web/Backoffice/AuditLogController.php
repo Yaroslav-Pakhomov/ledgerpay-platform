@@ -34,7 +34,7 @@ final class AuditLogController extends Controller
      */
     public function index(Request $request): Response
     {
-        $action = $request->string('action')->toString();
+        $action    = $request->string('action')->toString();
         $requestId = $request->string('request_id')->toString();
 
         $logs = AuditLog::query()

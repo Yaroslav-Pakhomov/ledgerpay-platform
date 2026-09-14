@@ -66,11 +66,11 @@ final class ExplainQueryCommand extends Command
         $this->components->twoColumnDetail('Seq Scan', $summary['uses_seq_scan'] ? 'yes' : 'no');
 
         if ($summary['planning_time_ms'] !== null) {
-            $this->components->twoColumnDetail('Planning time', number_format($summary['planning_time_ms'], 3).' ms');
+            $this->components->twoColumnDetail('Planning time', number_format($summary['planning_time_ms'], 3) . ' ms');
         }
 
         if ($summary['execution_time_ms'] !== null) {
-            $this->components->twoColumnDetail('Execution time', number_format($summary['execution_time_ms'], 3).' ms');
+            $this->components->twoColumnDetail('Execution time', number_format($summary['execution_time_ms'], 3) . ' ms');
         }
 
         $this->newLine();

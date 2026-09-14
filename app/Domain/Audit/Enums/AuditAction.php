@@ -39,18 +39,18 @@ namespace App\Domain\Audit\Enums;
 enum AuditAction: string
 {
     case UserRegistered = 'user_registered';
-    case UserLoggedIn = 'user_logged_in';
-    case UserLoggedOut = 'user_logged_out';
+    case UserLoggedIn   = 'user_logged_in';
+    case UserLoggedOut  = 'user_logged_out';
 
     case AccountCreated = 'account_created';
 
-    case TransactionCreated = 'transaction_created';
-    case TransactionQueued = 'transaction_queued';
+    case TransactionCreated   = 'transaction_created';
+    case TransactionQueued    = 'transaction_queued';
     case TransactionCompleted = 'transaction_completed';
-    case TransactionFailed = 'transaction_failed';
-    case TransactionRetried = 'transaction_retried';
+    case TransactionFailed    = 'transaction_failed';
+    case TransactionRetried   = 'transaction_retried';
 
-    case BackofficeCustomerViewed = 'backoffice_customer_viewed';
+    case BackofficeCustomerViewed  = 'backoffice_customer_viewed';
     case BackofficeDashboardViewed = 'backoffice_dashboard_viewed';
 
 }

@@ -25,7 +25,7 @@ final class AccountApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $customer = $this->createCustomer();
-        $data = [
+        $data     = [
             'customer_uuid' => $customer->uuid,
             'currency'      => 'rub',
         ];
@@ -91,7 +91,7 @@ final class AccountApiTest extends TestCase
 
         $accountUuid = $createResponse->json('data.uuid');
 
-        $response = $this->getJson('/api/accounts/'.$accountUuid);
+        $response = $this->getJson('/api/accounts/' . $accountUuid);
 
         $response->assertOk()
             ->assertJsonPath('data.uuid', $accountUuid)
@@ -106,7 +106,7 @@ final class AccountApiTest extends TestCase
         $this->withoutExceptionHandling();
 
         $customer = $this->createCustomer();
-        $account = $this->createAccount($customer, currency: 'USD');
+        $account  = $this->createAccount($customer, currency: 'USD');
 
         $this->actingAsBackoffice();
 
@@ -137,7 +137,7 @@ final class AccountApiTest extends TestCase
 
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/accounts/'.$account->uuid.'/balance');
+        $response = $this->getJson('/api/accounts/' . $account->uuid . '/balance');
 
         $response->assertOk()
             ->assertJsonPath('account_uuid', $account->uuid)
@@ -159,7 +159,7 @@ final class AccountApiTest extends TestCase
 
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/accounts/'.$account->uuid.'/ledger');
+        $response = $this->getJson('/api/accounts/' . $account->uuid . '/ledger');
 
         $response->assertOk()
             ->assertJsonPath('data.0.direction', LedgerDirection::Credit->value)
@@ -178,7 +178,7 @@ final class AccountApiTest extends TestCase
     {
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/accounts/'.Str::uuid()->toString());
+        $response = $this->getJson('/api/accounts/' . Str::uuid()->toString());
 
         $response->assertNotFound();
     }

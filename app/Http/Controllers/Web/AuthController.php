@@ -87,7 +87,7 @@ final class AuthController extends Controller
     public function register(RegisterRequest $request, AuthService $authService): RedirectResponse
     {
         $validated = $request->validated();
-        $result = $authService->registerCustomer(
+        $result    = $authService->registerCustomer(
             new RegisterCustomerUserData(
                 $validated['name'],
                 $validated['email'],

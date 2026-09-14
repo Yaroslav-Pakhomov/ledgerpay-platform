@@ -99,7 +99,7 @@ final class CustomerApiTest extends TestCase
 
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/customers/'.$customer->uuid);
+        $response = $this->getJson('/api/customers/' . $customer->uuid);
 
         $response->assertOk()
             ->assertJsonPath('data.uuid', $customer->uuid)
@@ -110,7 +110,7 @@ final class CustomerApiTest extends TestCase
     {
         $this->actingAsBackoffice();
 
-        $response = $this->getJson('/api/customers/'.Str::uuid()->toString());
+        $response = $this->getJson('/api/customers/' . Str::uuid()->toString());
 
         $response->assertNotFound();
     }

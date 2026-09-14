@@ -120,7 +120,7 @@ final class AuditLogTest extends TestCase
     public function test_customer_cannot_view_audit_logs(): void
     {
         $customer = Customer::factory()->create();
-        $user = User::factory()->forCustomer($customer)->create();
+        $user     = User::factory()->forCustomer($customer)->create();
 
         $this->actingAs($user);
 
@@ -136,8 +136,8 @@ final class AuditLogTest extends TestCase
         Queue::fake();
 
         $customer = Customer::factory()->create();
-        $user = User::factory()->forCustomer($customer)->create();
-        $account = Account::factory()->for($customer)->currency('USD')->withBalance(0)->create();
+        $user     = User::factory()->forCustomer($customer)->create();
+        $account  = Account::factory()->for($customer)->currency('USD')->withBalance(0)->create();
 
         $this->actingAs($user)->post('/transactions/deposit', [
             'target_account_uuid' => $account->uuid,
@@ -173,7 +173,7 @@ final class AuditLogTest extends TestCase
             'audit-idem-key-001',
         );
 
-        $first = $service->deposit($data);
+        $first  = $service->deposit($data);
         $second = $service->deposit($data);
 
         $this->assertTrue($first->created);
@@ -237,7 +237,7 @@ final class AuditLogTest extends TestCase
         ], ['Idempotency-Key' => 'audit-failed-001']);
 
         $transaction = Transaction::query()->firstOrFail();
-        $exception = new InsufficientFundsException;
+        $exception   = new InsufficientFundsException;
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
@@ -305,7 +305,7 @@ final class AuditLogTest extends TestCase
     public function test_backoffice_customer_view_logs_audit(): void
     {
         $backoffice = User::factory()->backOffice()->create();
-        $customer = Customer::factory()->create();
+        $customer   = Customer::factory()->create();
         $accountIds = $customer->accounts()->pluck('id');
 
         $this->actingAs($backoffice)

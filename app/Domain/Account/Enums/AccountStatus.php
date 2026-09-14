@@ -17,7 +17,7 @@ namespace App\Domain\Account\Enums;
  */
 enum AccountStatus: string
 {
-    case Active = 'active';
+    case Active  = 'active';
     case Blocked = 'blocked';
-    case Closed = 'closed';
+    case Closed  = 'closed';
 }

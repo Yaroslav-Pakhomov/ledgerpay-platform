@@ -83,6 +83,6 @@ final class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')->toString()).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')->toString()) . '|' . $this->ip());
     }
 }

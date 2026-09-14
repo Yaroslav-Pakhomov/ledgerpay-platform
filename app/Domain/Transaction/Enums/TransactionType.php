@@ -19,7 +19,7 @@ namespace App\Domain\Transaction\Enums;
  */
 enum TransactionType: string
 {
-    case Deposit = 'deposit';
+    case Deposit    = 'deposit';
     case Withdrawal = 'withdrawal';
-    case Transfer = 'transfer';
+    case Transfer   = 'transfer';
 }

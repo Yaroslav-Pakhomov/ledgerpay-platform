@@ -30,7 +30,7 @@ final class OutboxController extends Controller
      */
     public function index(Request $request): Response
     {
-        $status = $request->string('status')->toString();
+        $status    = $request->string('status')->toString();
         $eventName = $request->string('event_name')->toString();
 
         $messages = OutboxMessage::query()

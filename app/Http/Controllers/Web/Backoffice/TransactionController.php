@@ -26,7 +26,7 @@ final class TransactionController extends Controller
         // Получаем значения фильтров из query-параметров.
         // Если параметр отсутствует, будет возвращена пустая строка.
         $status = $request->string('status')->toString();
-        $type = $request->string('type')->toString();
+        $type   = $request->string('type')->toString();
 
         // Формируем выборку транзакций.
         $transactions = Transaction::query()

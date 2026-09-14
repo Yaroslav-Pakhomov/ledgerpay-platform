@@ -20,8 +20,8 @@ use App\Domain\Outbox\Models\OutboxMessage;
  */
 enum OutboxStatus: string
 {
-    case Pending = 'pending';
+    case Pending    = 'pending';
     case Processing = 'processing';
-    case Published = 'published';
-    case Failed = 'failed';
+    case Published  = 'published';
+    case Failed     = 'failed';
 }

@@ -17,6 +17,6 @@ namespace App\Domain\Ledger\Enums;
  */
 enum LedgerDirection: string
 {
-    case Debit = 'debit';
+    case Debit  = 'debit';
     case Credit = 'credit';
 }

@@ -57,7 +57,7 @@ final class ProcessTransactionJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('transaction:'.$this->transactionId)
+            new WithoutOverlapping('transaction:' . $this->transactionId)
                 ->releaseAfter(10)
                 ->expireAfter(60),
         ];

@@ -55,6 +55,6 @@ final class DepositRequest extends FormRequest
      */
     public function idempotencyKey(): string
     {
-        return 'web-deposit-'.Str::uuid()->toString();
+        return 'web-deposit-' . Str::uuid()->toString();
     }
 }

@@ -56,7 +56,7 @@ final class PublishOutboxMessageJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('outbox:'.$this->outboxMessageId)
+            new WithoutOverlapping('outbox:' . $this->outboxMessageId)
                 ->releaseAfter(15)
                 ->expireAfter(120),
         ];

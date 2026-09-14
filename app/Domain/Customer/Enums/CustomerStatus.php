@@ -18,6 +18,6 @@ namespace App\Domain\Customer\Enums;
  */
 enum CustomerStatus: string
 {
-    case Active = 'active';
+    case Active  = 'active';
     case Blocked = 'blocked';
 }

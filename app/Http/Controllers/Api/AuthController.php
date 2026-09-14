@@ -25,7 +25,7 @@ final class AuthController extends Controller
      */
     public function register(RegisterRequest $request, AuthService $authService): JsonResponse
     {
-        $validated = $request->validated();
+        $validated        = $request->validated();
         $registerCustomer = new RegisterCustomerUserData(
             name: $validated['name'],
             email: $validated['email'],

@@ -73,7 +73,7 @@ final class QueryPlanInspector
         }
 
         $nodeTypes = [];
-        $indexes = [];
+        $indexes   = [];
 
         self::walkPlan($root, $nodeTypes, $indexes);
 
@@ -108,7 +108,7 @@ final class QueryPlanInspector
         if ($analyze && self::isMutatingSql($sql)) {
             throw new RuntimeException(
                 'EXPLAIN ANALYZE executes the query. Mutating SQL (INSERT/UPDATE/DELETE/...) is blocked. '
-                .'Use plain EXPLAIN instead, or run manually in psql if you know what you are doing.',
+                . 'Use plain EXPLAIN instead, or run manually in psql if you know what you are doing.',
             );
         }
 
@@ -138,7 +138,7 @@ final class QueryPlanInspector
     {
         if ($connection->getDriverName() !== 'pgsql') {
             throw new InvalidArgumentException(
-                'QueryPlanInspector supports PostgreSQL only. Current driver: '.$connection->getDriverName(),
+                'QueryPlanInspector supports PostgreSQL only. Current driver: ' . $connection->getDriverName(),
             );
         }
     }

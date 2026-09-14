@@ -55,6 +55,6 @@ final class WithdrawRequest extends FormRequest
      */
     public function idempotencyKey(): string
     {
-        return 'web-withdraw-'.Str::uuid()->toString();
+        return 'web-withdraw-' . Str::uuid()->toString();
     }
 }

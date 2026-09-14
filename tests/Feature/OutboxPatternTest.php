@@ -243,7 +243,7 @@ final class OutboxPatternTest extends TestCase
         ])->assertCreated();
 
         $transaction = Transaction::query()->firstOrFail();
-        $job = app(ProcessTransactionJob::class, ['transactionId' => $transaction->id]);
+        $job         = app(ProcessTransactionJob::class, ['transactionId' => $transaction->id]);
 
         try {
             $job->handle(app(TransactionProcessorService::class));
