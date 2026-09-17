@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\Backoffice\AuditLogController as BackofficeAuditLog
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
 use App\Http\Controllers\Web\Backoffice\OutboxController;
+use App\Http\Controllers\Web\Backoffice\ReconciliationController;
 use App\Http\Controllers\Web\Backoffice\TransactionController as BackofficeTransactionController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\TransactionController;
@@ -89,6 +90,17 @@ Route::middleware('auth')->group(function (): void {
 
         // Список опубликованных операций
         Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
+
+        Route::controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
+            // Страница отчётов сверки
+            Route::get('/', 'index')->name('index');
+
+            // Запуск сверки для всех счетов
+            Route::post('/run', 'run')->name('run');
+
+            // Сверка одного счёта
+            Route::post('accounts/{accountUuid}/run', 'runForAccount')->whereUuid('accountUuid')->name('accounts.run');
+        });
     });
 });
 

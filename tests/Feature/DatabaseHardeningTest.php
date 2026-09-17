@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Application\Reconciliation\Services\ReconciliationService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Models\AuditLog;
@@ -16,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Проверяет защитные ограничения на уровне базы данных.
@@ -27,7 +29,8 @@ use Tests\TestCase;
  * - транзакции должны иметь корректную структуру;
  * - ledger-записи должны содержать положительную сумму;
  * - ledger_entries нельзя изменять напрямую;
- * - audit_logs нельзя удалять напрямую.
+ * - audit_logs нельзя удалять напрямую;
+ * - reconciliation_reports нельзя изменять или удалять напрямую.
  *
  * Если приложение или сторонний код попытается обойти бизнес-логику
  * и выполнить некорректный SQL-запрос напрямую, база данных должна
@@ -200,5 +203,70 @@ final class DatabaseHardeningTest extends TestCase
         DB::table('audit_logs')
             ->where('id', $log->id)
             ->delete();
+    }
+
+    /**
+     * Проверяем неизменяемость reconciliation_reports.
+     *
+     * Отчёты сверки — append-only история проверок баланса.
+     * Триггер БД должен запрещать UPDATE независимо от способа доступа.
+     *
+     * @throws Throwable
+     */
+    public function test_database_trigger_prevents_raw_reconciliation_report_update(): void
+    {
+        $account = Account::factory()
+            ->withBalance(0)
+            ->create();
+
+        $report = app(ReconciliationService::class)->checkAccount($account);
+
+        $this->expectException(QueryException::class);
+
+        DB::table('reconciliation_reports')
+            ->where('id', $report->id)
+            ->update([
+                'difference' => 999,
+            ]);
+    }
+
+    /**
+     * Проверяем неизменяемость reconciliation_reports.
+     *
+     * Триггер БД должен запрещать DELETE независимо от способа доступа.
+     *
+     * @throws Throwable
+     */
+    public function test_database_trigger_prevents_raw_reconciliation_report_delete(): void
+    {
+        $account = Account::factory()
+            ->withBalance(0)
+            ->create();
+
+        $report = app(ReconciliationService::class)->checkAccount($account);
+
+        $this->expectException(QueryException::class);
+
+        DB::table('reconciliation_reports')
+            ->where('id', $report->id)
+            ->delete();
+    }
+
+    /**
+     * Счёт с отчётами сверки нельзя удалить: FK RESTRICT на account_id.
+     *
+     * @throws Throwable
+     */
+    public function test_account_with_reconciliation_reports_cannot_be_deleted(): void
+    {
+        $account = Account::factory()
+            ->withBalance(0)
+            ->create();
+
+        app(ReconciliationService::class)->checkAccount($account);
+
+        $this->expectException(QueryException::class);
+
+        $account->delete();
     }
 }

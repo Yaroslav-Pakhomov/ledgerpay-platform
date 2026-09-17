@@ -84,6 +84,8 @@ LedgerPay — backend-система для работы с клиентами, 
 * историю транзакций;
 * immutable ledger;
 * audit log;
+* transactional outbox;
+* сверку балансов счетов с реестром проводок;
 * административный backoffice.
 
 Основные операции движения денег:
@@ -107,6 +109,8 @@ app/
 │   ├── Audit/
 │   ├── Customer/
 │   ├── Ledger/
+│   ├── Outbox/
+│   ├── Reconciliation/
 │   ├── Shared/
 │   └── Transaction/
 │
@@ -115,6 +119,8 @@ app/
 │   ├── Audit/
 │   ├── Auth/
 │   ├── Customer/
+│   ├── Outbox/
+│   ├── Reconciliation/
 │   └── Transaction/
 │
 ├── Http/
@@ -666,10 +672,16 @@ composer install
 ./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
 ```
 
-Для outbox также нужен scheduler:
+Для outbox и сверки нужен scheduler:
 
 ```bash
 ./vendor/bin/sail artisan schedule:work
+```
+
+Ручной запуск сверки балансов:
+
+```bash
+./vendor/bin/sail artisan reconciliation:run
 ```
 
 ---
@@ -793,6 +805,14 @@ make kafka-consume   # или Console → Topics → ledgerpay.domain-events
 
 CI и PHPUnit используют `KAFKA_ENABLED=false`.
 
+### Сверка балансов
+
+LedgerPay периодически сравнивает сохранённые балансы счетов с балансами, восстановленными из неизменяемых проводок реестра.
+
+Это помогает обнаружить порчу данных, операционные ошибки или неожиданные мутации баланса.
+
+Подробнее: [ADR-007](./docs/architecture/adr-007-reconciliation.md).
+
 ### Typed DTO
 
 Transport data отделена от бизнес-логики.
@@ -843,8 +863,6 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 - **Scoped idempotency per customer** — отдельная область `Idempotency-Key` для каждого клиента.
 - **API rate limiting** — ограничение частоты запросов к API.
 - **Sanctum token abilities** — разграничение прав доступа для API-токенов.
-- **Transactional outbox** — надёжная отправка событий во внешние системы без потери сообщений.
-- **Reconciliation job** — периодическая сверка ledger с текущими балансами счетов.
 - **Query/read services** — отдельный слой для сложных выборок и отчётности.
 - **Metrics** — сбор технических и бизнес-метрик системы.
 - **Distributed tracing** — трассировка запросов через API, очередь и worker.

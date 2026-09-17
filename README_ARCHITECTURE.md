@@ -536,8 +536,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 2. **Rate limiting и scoped tokens** — расширить throttling на API auth и money movement (web login уже ограничен в `LoginRequest`); Sanctum abilities per scope — минимальные права токена.
 3. **Outbox** — реализован (ADR-006): `transaction.created` / `transaction.completed` / `transaction.failed`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
 4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
-5. **Reconciliation job** — сверка `accounts.balance` с журналом проводок; периодически проверяет их совпадение — раннее обнаружение расхождений и багов.
-6. **Observability** — Telescope в dev; добавить **OpenAPI lint** в CI (`quality:ci` и `npm run build` уже в [GitHub Actions](./.github/workflows/ci.yml)).
+5. **Observability** — Telescope в dev; добавить **OpenAPI lint** в CI (`quality:ci` и `npm run build` уже в [GitHub Actions](./.github/workflows/ci.yml)).
 
 ---
 

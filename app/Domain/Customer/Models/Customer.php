@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * который безопасно отдавать во внешнее API.
  *
  * @property CustomerStatus $status
+ * @property string         $email
  */
 #[Table(name: 'customers')]
 final class Customer extends Model

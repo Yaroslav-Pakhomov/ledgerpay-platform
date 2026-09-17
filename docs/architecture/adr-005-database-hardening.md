@@ -22,6 +22,8 @@
 - форма счетов транзакции соответствует типу (deposit / withdrawal / transfer);
 - записи `ledger_entries` неизменяемы (UPDATE/DELETE блокируются триггером);
 - записи `audit_logs` неизменяемы (UPDATE/DELETE блокируются триггером);
+- записи `reconciliation_reports` неизменяемы (UPDATE/DELETE блокируются триггером, см. [ADR-007](./adr-007-reconciliation.md));
+- FK `reconciliation_reports.account_id → accounts.id` с `ON DELETE RESTRICT` (см. [ADR-007](./adr-007-reconciliation.md));
 - partial indexes для мониторинга failed/pending транзакций и истории ledger/audit.
 
 ## Последствия

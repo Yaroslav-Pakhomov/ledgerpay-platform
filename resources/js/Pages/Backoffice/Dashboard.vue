@@ -82,6 +82,10 @@ function money(amount, currency) {
                     <Link :href="route('backoffice.outbox.index')" class="text-indigo-400 hover:text-indigo-300">
                         Outbox →
                     </Link>
+
+                    <Link :href="route('backoffice.reconciliation.index')" class="text-indigo-400 hover:text-indigo-300">
+                        Сверка →
+                    </Link>
                 </div>
             </div>
 

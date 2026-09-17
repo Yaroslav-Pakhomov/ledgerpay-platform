@@ -26,6 +26,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property AccountStatus $status
  * @property mixed|null    $email
+ * @property string        $uuid
+ * @property int           $balance
+ * @property string        $currency
+ * @property-read Customer|null $customer
  */
 #[Table(name: 'accounts')]
 final class Account extends Model

@@ -16,3 +16,8 @@ Artisan::command('inspire', function (): void {
 ScheduleAlias::command('outbox:dispatch-pending --limit=100')
     ->everyMinute()
     ->withoutOverlapping();
+
+// hourly() — планирует запуск раз в час;
+ScheduleAlias::command('reconciliation:run --limit=1000')
+    ->hourly()
+    ->withoutOverlapping();
