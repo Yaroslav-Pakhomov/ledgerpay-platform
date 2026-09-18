@@ -7,6 +7,7 @@ use App\Http\Middleware\ApiRequestLoggingMiddleware;
 use App\Http\Middleware\EnsureBackofficeUser;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestIdMiddleware;
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use App\Support\Http\ProblemDetails;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -38,11 +40,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            SecurityHeadersMiddleware::class,
         ]);
 
         $middleware->api(append: [
             RequestIdMiddleware::class,
             ApiRequestLoggingMiddleware::class,
+            SecurityHeadersMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -57,6 +61,28 @@ return Application::configure(basePath: dirname(__DIR__))
         $wantsApiResponse = static function (Request $request): bool {
             return $request->is('api/*') || $request->expectsJson();
         };
+
+        /**
+         * Превышен кол-во запросов — 429
+         *
+         * Исключение ThrottleRequestsException возникает при срабатывании middleware throttle:*
+         * (auth, api-global, money-movement, backoffice-heavy).
+         *
+         * Для API возвращается ответ Problem Details вместо общей HTTP-ошибки.
+         */
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request) use ($wantsApiResponse) {
+            if (!$wantsApiResponse($request)) {
+                return null;
+            }
+
+            return ProblemDetails::make(
+                request: $request,
+                title: 'Слишком много запросов',
+                detail: 'Превышен лимит скорости. Пожалуйста, повторите попытку позже.',
+                status: Response::HTTP_TOO_MANY_REQUESTS,
+                type: 'https://ledgerpay.local/problems/rate-limit-exceeded',
+            );
+        });
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request, Throwable $e): bool => $wantsApiResponse($request),

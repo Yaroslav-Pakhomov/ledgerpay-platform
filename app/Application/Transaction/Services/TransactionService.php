@@ -56,13 +56,14 @@ final readonly class TransactionService
                 ->firstOrFail();
 
             return Transaction::query()->create([
-                'type'              => TransactionType::Deposit,
-                'status'            => TransactionStatus::Pending,
-                'source_account_id' => null,
-                'target_account_id' => $target->id,
-                'amount'            => $data->amount,
-                'currency'          => strtoupper($data->currency),
-                'idempotency_key'   => $data->idempotencyKey,
+                'type'                   => TransactionType::Deposit,
+                'status'                 => TransactionStatus::Pending,
+                'source_account_id'      => null,
+                'target_account_id'      => $target->id,
+                'amount'                 => $data->amount,
+                'currency'               => strtoupper($data->currency),
+                'idempotency_key'        => $data->idempotencyKey,
+                'idempotency_expires_at' => now()->addHours((int) config('ledgerpay.idempotency.ttl_hours')),
             ]);
         };
 
@@ -103,13 +104,14 @@ final readonly class TransactionService
                 ->firstOrFail();
 
             return Transaction::query()->create([
-                'type'              => TransactionType::Withdrawal,
-                'status'            => TransactionStatus::Pending,
-                'source_account_id' => $source->id,
-                'target_account_id' => null,
-                'amount'            => $data->amount,
-                'currency'          => strtoupper($data->currency),
-                'idempotency_key'   => $data->idempotencyKey,
+                'type'                   => TransactionType::Withdrawal,
+                'status'                 => TransactionStatus::Pending,
+                'source_account_id'      => $source->id,
+                'target_account_id'      => null,
+                'amount'                 => $data->amount,
+                'currency'               => strtoupper($data->currency),
+                'idempotency_key'        => $data->idempotencyKey,
+                'idempotency_expires_at' => now()->addHours((int) config('ledgerpay.idempotency.ttl_hours')),
             ]);
         };
 
@@ -155,13 +157,14 @@ final readonly class TransactionService
                 ->firstOrFail();
 
             return Transaction::query()->create([
-                'type'              => TransactionType::Transfer,
-                'status'            => TransactionStatus::Pending,
-                'source_account_id' => $source->id,
-                'target_account_id' => $target->id,
-                'amount'            => $data->amount,
-                'currency'          => strtoupper($data->currency),
-                'idempotency_key'   => $data->idempotencyKey,
+                'type'                   => TransactionType::Transfer,
+                'status'                 => TransactionStatus::Pending,
+                'source_account_id'      => $source->id,
+                'target_account_id'      => $target->id,
+                'amount'                 => $data->amount,
+                'currency'               => strtoupper($data->currency),
+                'idempotency_key'        => $data->idempotencyKey,
+                'idempotency_expires_at' => now()->addHours((int) config('ledgerpay.idempotency.ttl_hours')),
             ]);
         };
 

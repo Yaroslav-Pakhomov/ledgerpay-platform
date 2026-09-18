@@ -682,6 +682,7 @@ composer install
 
 ```bash
 ./vendor/bin/sail artisan reconciliation:run
+./vendor/bin/sail artisan idempotency:prune-expired
 ```
 
 ---
@@ -813,6 +814,21 @@ LedgerPay периодически сравнивает сохранённые �
 
 Подробнее: [ADR-007](./docs/architecture/adr-007-reconciliation.md).
 
+### Защита от злоупотреблений
+
+LedgerPay использует ограничения скорости для конкретных запросов:
+
+- запросы аутентификации;
+- запросы глобального API;
+- запросы движения средств;
+- тяжелые операции в бэк-офисе.
+
+Заголовки безопасности применяются к API и web responses.
+
+Ключи идемпотентности имеют явное хранение метаданных и могут быть очищены после истечения.
+
+Подробнее: [ADR-008](./docs/architecture/adr-008-rate-limiting-abuse-protection.md).
+
 ### Typed DTO
 
 Transport data отделена от бизнес-логики.
@@ -861,7 +877,6 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 Возможные направления развития проекта:
 
 - **Scoped idempotency per customer** — отдельная область `Idempotency-Key` для каждого клиента.
-- **API rate limiting** — ограничение частоты запросов к API.
 - **Sanctum token abilities** — разграничение прав доступа для API-токенов.
 - **Query/read services** — отдельный слой для сложных выборок и отчётности.
 - **Metrics** — сбор технических и бизнес-метрик системы.

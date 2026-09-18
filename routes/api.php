@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\TransactionController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Route::get('/user', function (Request $request) {
@@ -14,16 +13,19 @@ use Illuminate\Support\Facades\Route;
 // })->middleware('auth:sanctum');
 
 Route::prefix('auth')->name('api.auth.')->group(function (): void {
-    Route::post('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::middleware('throttle:auth')->group(function (): void {
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('/register', [AuthController::class, 'register'])->name('register');
+        Route::post('/login', [AuthController::class, 'login'])->name('login');
+    });
+
+    Route::middleware(['auth:sanctum', 'throttle:api-global'])->group(function (): void {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     });
 });
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'throttle:api-global'])->group(function (): void {
     // Клиенты
     Route::controller(CustomerController::class)->prefix('customers')->name('api.customers.')->group(function (): void {
         // Получение всех клиентов
@@ -59,17 +61,19 @@ Route::middleware('auth:sanctum')->group(function (): void {
         // Получение всех транзакций
         Route::get('/', 'index')->name('index');
 
-        // Пополнения счета
-        Route::post('/deposit', 'deposit')->name('deposit');
+        Route::middleware('throttle:money-movement')->group(function (): void {
+            // Пополнения счета
+            Route::post('/deposit', 'deposit')->name('deposit');
 
-        // Списания со счета
-        Route::post('/withdraw', 'withdraw')->name('withdraw');
+            // Списания со счета
+            Route::post('/withdraw', 'withdraw')->name('withdraw');
 
-        // Перевод между счетами
-        Route::post('/transfer', 'transfer')->name('transfer');
+            // Перевод между счетами
+            Route::post('/transfer', 'transfer')->name('transfer');
 
-        // Повтор failed-транзакцию
-        Route::post('/{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+            // Повтор failed-транзакцию
+            Route::post('/{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+        });
 
         // Одна транзакция по uuid
         Route::get('/{uuid}', 'show')->whereUuid('uuid')->name('show');

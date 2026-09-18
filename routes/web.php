@@ -21,12 +21,12 @@ Route::middleware('guest')->group(function (): void {
         // Страница входа
         Route::get('/login', 'loginPage')->name('login');
         // Отправка формы входа
-        Route::post('/login', 'login')->name('login.store');
+        Route::middleware('throttle:auth')->post('/login', 'login')->name('login.store');
 
         // Страница регистрации
         Route::get('/register', 'registerPage')->name('register');
         // Отправка формы регистрации
-        Route::post('/register', 'register')->name('register.store');
+        Route::middleware('throttle:auth')->post('/register', 'register')->name('register.store');
     });
 });
 
@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function (): void {
     });
 
     // Транзакции
-    Route::controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function (): void {
+    Route::middleware('throttle:money-movement')->controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function (): void {
         // Вложение средств на счёт
         Route::post('/deposit', 'deposit')->name('deposit');
 
@@ -91,7 +91,7 @@ Route::middleware('auth')->group(function (): void {
         // Список опубликованных операций
         Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
 
-        Route::controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
+        Route::middleware('throttle:backoffice-heavy')->controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
             // Страница отчётов сверки
             Route::get('/', 'index')->name('index');
 

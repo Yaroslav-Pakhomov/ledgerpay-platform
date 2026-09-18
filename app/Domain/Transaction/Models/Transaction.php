@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Override;
 
 /**
  * Доменная модель финансовой транзакции.
@@ -33,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null       $processed_at
  * @property-read Account|null $sourceAccount
  * @property-read Account|null $targetAccount
+ * @property Carbon|null $idempotency_expires_at
  */
 #[Table(name: 'transactions')]
 final class Transaction extends Model
@@ -50,13 +52,13 @@ final class Transaction extends Model
     /**
      * Разрешает массовое заполнение всех полей модели.
      */
-    #[\Override]
+    #[Override]
     protected $guarded = [];
 
     /**
      * Преобразование атрибутов модели.
      */
-    #[\Override]
+    #[Override]
     protected function casts(): array
     {
         return [
@@ -71,6 +73,9 @@ final class Transaction extends Model
 
             // Дата и время фактической обработки транзакции.
             'processed_at' => 'datetime',
+
+            // Срок действия ключа идемпотентности; после истечения ключ очищается командой idempotency:prune-expired.
+            'idempotency_expires_at' => 'datetime',
         ];
     }
 
@@ -79,7 +84,7 @@ final class Transaction extends Model
      *
      * @return array<int, string>
      */
-    #[\Override]
+    #[Override]
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -93,7 +98,7 @@ final class Transaction extends Model
      *
      * Laravel будет искать транзакцию по колонке uuid.
      */
-    #[\Override]
+    #[Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';
