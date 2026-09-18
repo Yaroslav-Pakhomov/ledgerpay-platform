@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { router, useForm } from '@inertiajs/vue3';
+import {Link, router, useForm} from '@inertiajs/vue3';
 
 defineOptions({
     layout: AppLayout,
@@ -31,7 +31,11 @@ function applyFilters() {
 <template>
     <div class="space-y-8">
         <section>
-            <h1 class="text-3xl font-bold">Outbox-сообщения</h1>
+            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
+                ← Бэк-офис
+            </Link>
+
+            <h1 class="mt-4 text-3xl font-bold">Outbox-сообщения</h1>
             <p class="mt-2 text-gray-400">
                 Надёжная публикация доменных событий после commit в БД.
             </p>

@@ -1,6 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
+import PaginationLinks from "@/Components/PaginationLinks.vue";
 
 defineOptions({
     layout: AppLayout,
@@ -46,7 +47,11 @@ function runForAccount(accountUuid) {
     <div class="space-y-8">
         <section class="flex items-start justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold">Сверка балансов</h1>
+                <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
+                    ← Бэк-офис
+                </Link>
+
+                <h1 class="mt-4 text-3xl font-bold">Сверка балансов</h1>
                 <p class="mt-2 text-gray-400">
                     Сравнение сохранённых балансов с балансами, восстановленными из неизменяемого реестра.
                 </p>
@@ -141,21 +146,7 @@ function runForAccount(accountUuid) {
                     </tr>
                     </tbody>
                 </table>
-                <div v-if="reports.links?.length > 3" class="mt-6 flex flex-wrap gap-2">
-                    <Link
-                        v-for="link in reports.links"
-                        :key="link.label"
-                        :href="link.url"
-                        class="rounded-lg px-3 py-1 text-sm"
-                        :class="link.active
-                            ? 'bg-indigo-600 text-white'
-                            : link.url
-                                ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                                : 'cursor-not-allowed bg-gray-900 text-gray-600'"
-                        :preserve-state="true"
-                        v-html="link.label"
-                    />
-                </div>
+                <PaginationLinks :links="reports.links" />
             </div>
         </section>
     </div>

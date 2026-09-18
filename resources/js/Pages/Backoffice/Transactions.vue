@@ -2,6 +2,7 @@
 
 import AppLayout from "@/Layouts/AppLayout.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
+import PaginationLinks from "@/Components/PaginationLinks.vue";
 
 defineOptions({
     layout: AppLayout,
@@ -141,21 +142,7 @@ function money(amount, currency) {
                 </table>
             </div>
 
-            <div v-if="transactions.links?.length > 3" class="mt-6 flex flex-wrap gap-2">
-                <Link
-                    v-for="link in transactions.links"
-                    :key="link.label"
-                    :href="link.url"
-                    class="rounded-lg px-3 py-1 text-sm"
-                    :class="link.active
-                        ? 'bg-indigo-600 text-white'
-                        : link.url
-                            ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                            : 'cursor-not-allowed bg-gray-900 text-gray-600'"
-                    :preserve-state="true"
-                    v-html="link.label"
-                />
-            </div>
+            <PaginationLinks :links="transactions.links" />
         </section>
     </div>
 </template>

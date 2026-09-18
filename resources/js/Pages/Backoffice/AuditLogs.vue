@@ -1,6 +1,7 @@
 <script setup>
 
 import AppLayout from "@/Layouts/AppLayout.vue";
+import PaginationLinks from "@/Components/PaginationLinks.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
 
 defineOptions({
@@ -35,7 +36,11 @@ function applyFilters() {
 <template>
     <div class="space-y-8">
         <section>
-            <h1 class="text-3xl font-bold">Журнал аудита</h1>
+            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
+                ← Бэк-офис
+            </Link>
+
+            <h1 class="mt-4 text-3xl font-bold">Журнал аудита</h1>
             <p class="mt-2 text-gray-400">
                 Неизменяемый журнал действий для расследований и операционного контроля.
             </p>
@@ -97,21 +102,7 @@ function applyFilters() {
                     </tr>
                     </tbody>
                 </table>
-                <div v-if="logs.links?.length > 3" class="mt-6 flex flex-wrap gap-2">
-                    <Link
-                        v-for="link in logs.links"
-                        :key="link.label"
-                        :href="link.url"
-                        class="rounded-lg px-3 py-1 text-sm"
-                        :class="link.active
-                            ? 'bg-indigo-600 text-white'
-                            : link.url
-                                ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                                : 'cursor-not-allowed bg-gray-900 text-gray-600'"
-                        :preserve-state="true"
-                        v-html="link.label"
-                    />
-                </div>
+                <PaginationLinks :links="logs.links" />
             </div>
         </section>
     </div>
