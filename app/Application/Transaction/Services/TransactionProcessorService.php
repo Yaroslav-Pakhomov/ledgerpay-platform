@@ -10,6 +10,8 @@ use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
+use App\Domain\Transaction\Events\TransactionCompleted;
+use App\Domain\Transaction\Events\TransactionFailed;
 use App\Domain\Transaction\Models\Transaction;
 use App\Domain\Transaction\Services\TransferPolicy;
 use Illuminate\Support\Facades\DB;
@@ -32,9 +34,9 @@ use Throwable;
  *
  * Все денежные операции выполняются внутри DB transaction,
  * чтобы изменение баланса, создание ledger-записей, запись outbox-события
- * `transaction.completed` и смена статуса происходили как единое атомарное действие.
+ * {@see TransactionCompleted} и смена статуса происходили как единое атомарное действие.
  *
- * Терминальный сбой обработки (`transaction.failed`) фиксируется через
+ * Терминальный сбой обработки ({@see TransactionFailed}) фиксируется через
  * {@see self::failWithOutbox()} из {@see ProcessTransactionJob::failed()}.
  */
 final readonly class TransactionProcessorService
@@ -267,7 +269,7 @@ final readonly class TransactionProcessorService
     }
 
     /**
-     * Переводит транзакцию в Failed и записывает outbox `transaction.failed`.
+     * Переводит транзакцию в Failed и записывает outbox {@see TransactionFailed}.
      *
      * Вызывается из {@see ProcessTransactionJob::failed()}
      * внутри DB-транзакции. Caller обязан проверить, что status !== Failed (idempotency).
@@ -287,51 +289,34 @@ final readonly class TransactionProcessorService
     }
 
     /**
-     * Записывает outbox-событие transaction.completed для downstream-потребителей.
+     * Записывает outbox-событие {@see TransactionCompleted} для внешних потребителей.
      *
      * Вызывается внутри DB-транзакции processDeposit/Withdrawal/Transfer
      * сразу после перевода агрегата в {@see TransactionStatus::Completed}.
      *
-     * @param Transaction $transaction Завершённая транзакция (refresh после update)
+     * @param Transaction $transaction Завершённая транзакция (после refresh() модели)
      */
     private function recordTransactionCompleted(Transaction $transaction): void
     {
-        $this->outboxWriter->record(
-            eventName: 'transaction.completed',
-            aggregate: $transaction,
-            payload: [
-                'transaction_uuid'  => $transaction->uuid,
-                'type'              => $transaction->type->value,
-                'amount'            => $transaction->amount,
-                'currency'          => $transaction->currency,
-                'source_account_id' => $transaction->source_account_id,
-                'target_account_id' => $transaction->target_account_id,
-                'processed_at'      => $transaction->processed_at->toISOString(),
-            ],
+        $this->outboxWriter->recordEvent(
+            new TransactionCompleted($transaction),
         );
     }
 
     /**
-     * Записывает outbox-событие transaction.failed для downstream-потребителей.
+     * Записывает outbox-событие {@see TransactionFailed} для внешних потребителей.
      *
      * @param Transaction $transaction Транзакция с заполненным failure_reason
      * @param Throwable   $exception   Исключение, приведшее к сбою
      */
     private function recordTransactionFailed(Transaction $transaction, Throwable $exception): void
     {
-        $this->outboxWriter->record(
-            eventName: 'transaction.failed',
-            aggregate: $transaction,
-            payload: [
-                'transaction_uuid'  => $transaction->uuid,
-                'type'              => $transaction->type->value,
-                'amount'            => $transaction->amount,
-                'currency'          => $transaction->currency,
-                'source_account_id' => $transaction->source_account_id,
-                'target_account_id' => $transaction->target_account_id,
-                'failure_reason'    => $transaction->failure_reason,
-                'exception_class'   => $exception::class,
-            ],
+        $this->outboxWriter->recordEvent(
+            new TransactionFailed(
+                transaction: $transaction,
+                reason: $exception->getMessage(),
+                exceptionClass: $exception::class,
+            ),
         );
     }
 }

@@ -18,12 +18,15 @@ Scheduled command `outbox:dispatch-pending` ставит pending/failed запи
 
 Queue job публикует сообщение (structured log + опционально Kafka/Redpanda) и помечает его как `published`.
 
-События: `transaction.created`, `transaction.completed`, `transaction.failed`.
+События: `transaction.created`, `transaction.completed`, `transaction.failed`, `transaction.retried`.
 
 Жизненный цикл:
 - transaction.created     → Pending заведена (HTTP)
 - transaction.completed   → деньги двинулись (worker OK)
-- transaction.failed      → терминальный сбой после retry (worker failed)
+- transaction.failed    → терминальный сбой после retry (worker failed)
+- transaction.retried   → Failed → Pending (ручной retry)
+
+Типизированные события и mapper: [ADR-009](./adr-009-typed-domain-events.md).
 
 Повтор вручную: (`Failed → Pending`) при повторном сбое может породить **второй** `transaction.failed` — потребители должны быть идемпотентными (проверять по `outbox_uuid`).
 

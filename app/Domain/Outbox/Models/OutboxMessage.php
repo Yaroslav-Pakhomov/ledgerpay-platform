@@ -9,6 +9,7 @@ use App\Application\Outbox\Services\OutboxPublisher;
 use App\Application\Outbox\Services\OutboxWriter;
 use App\Console\Commands\DispatchPendingOutboxMessagesCommand;
 use App\Domain\Outbox\Enums\OutboxStatus;
+use App\Domain\Shared\Events\IDomainEvent;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -19,7 +20,7 @@ use Override;
 /**
  * Запись transactional outbox для надёжной публикации доменных событий.
  *
- * Создаётся через {@see OutboxWriter}
+ * Создаётся через {@see OutboxWriter::recordEvent()} (типизированное {@see IDomainEvent})
  * в той же DB-транзакции, что и бизнес-изменение (например {@see Transaction}).
  *
  * Публикация выполняется асинхронно:
@@ -29,7 +30,7 @@ use Override;
  *
  * @property int                       $id
  * @property string                    $uuid           Публичный идентификатор outbox-записи
- * @property string                    $event_name     Имя события, например transaction.created
+ * @property string                    $event_name     Имя события: transaction.created, transaction.completed, transaction.failed, transaction.retried
  * @property string                    $aggregate_type FQCN агрегата
  * @property int                       $aggregate_id   PK агрегата
  * @property string|null               $aggregate_uuid Публичный UUID агрегата

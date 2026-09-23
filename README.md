@@ -774,6 +774,7 @@ LedgerPay записывает доменные события в `outbox_messag
 
 - `transaction.created` — операция заведена (Pending);
 - `transaction.completed` — деньги успешно обработаны;
+- `transaction.retried` — повторная постановка Failed → Pending (ручной retry);
 - `transaction.failed` — терминальный сбой после retry.
 
 Отдельная команда dispatch'ит pending-сообщения в queue workers.
@@ -781,6 +782,15 @@ LedgerPay записывает доменные события в `outbox_messag
 Это предотвращает классическую проблему: DB commit успешен, а публикация события — нет.
 
 Подробнее: [ADR-006](./docs/architecture/adr-006-outbox-pattern.md).
+
+### Типизированные доменные события
+
+Изменения жизненного цикла транзакции представлены типизированными доменными событиями
+и сохраняются через преобразователь outbox.
+
+Это устраняет разрозненные массивы событий и упрощает эволюцию контрактов.
+
+Подробнее: [ADR-009](./docs/architecture/adr-009-typed-domain-events.md).
 
 ### Kafka / Redpanda (local dev)
 

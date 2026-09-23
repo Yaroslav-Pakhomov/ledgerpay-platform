@@ -22,13 +22,13 @@ use Throwable;
 /**
  * Infrastructure job для асинхронной обработки агрегата Transaction.
  *
- * Связывает application layer (TransactionService) с доменной обработкой
+ * Связывает прикладной слой (TransactionService) с доменной обработкой
  * в TransactionProcessorService. Job не содержит бизнес-логики —
  * только загрузку агрегата, проверку статуса и делегирование в processor.
  *
  * Доменные ошибки (InsufficientFundsException, InactiveAccountException,
  * CurrencyMismatchException, SameAccountTransferException) пробрасываются
- * из processor → retry ×5 → failed() записывает Failed, outbox `transaction.failed`
+ * из processor → retry ×5 → failed() записывает Failed, outbox {@see TransactionFailed}
  * и audit {@see AuditAction::TransactionFailed}.
  */
 #[Backoff(10)]
@@ -85,7 +85,7 @@ final class ProcessTransactionJob implements ShouldQueue
 
         /**
          * Идемпотентность worker'а: уже завершенные или failed-транзакции
-         * не обрабатываются повторно (retry endpoint переводит Failed → Pending).
+         * не обрабатываются повторно (ручной retry переводит Failed → Pending).
          */
         if ($transaction->status === TransactionStatus::Completed) {
             return;
@@ -116,8 +116,10 @@ final class ProcessTransactionJob implements ShouldQueue
     /**
      * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
      *
-     * В одной DB-транзакции: Failed + outbox `transaction.failed`.
+     * В одной DB-транзакции: Failed + outbox {@see \App\Domain\Transaction\Events\TransactionFailed}.
      * Затем — {@see AuditAction::TransactionFailed} через {@see AuditLogger}.
+     *
+     * @throws Throwable
      */
     public function failed(Throwable $exception): void
     {

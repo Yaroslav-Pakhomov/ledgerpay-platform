@@ -9,11 +9,14 @@ use App\Application\Outbox\Services\OutboxPublisher;
 use App\Application\Outbox\Services\OutboxWriter;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
+use App\Application\Transaction\Services\TransactionService;
 use App\Console\Commands\DispatchPendingOutboxMessagesCommand;
+use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Account\Models\Account;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Outbox\Models\OutboxMessage;
 use App\Domain\Transaction\Enums\TransactionStatus;
+use App\Domain\Transaction\Enums\TransactionType;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -31,6 +34,7 @@ use Throwable;
  *
  * - `transaction.created` — при создании pending-транзакции (HTTP);
  * - `transaction.completed` — после успешного {@see ProcessTransactionJob};
+ * - `transaction.retried` — при retry Failed → Pending ({@see TransactionService::retry()});
  * - `transaction.failed` — после {@see ProcessTransactionJob::failed()};
  * - dispatch pending outbox через artisan-команду;
  * - переход outbox-записи в {@see OutboxStatus::Published}.
@@ -78,6 +82,8 @@ final class OutboxPatternTest extends TestCase
      * Успешная обработка ProcessTransactionJob создаёт transaction.completed в outbox.
      *
      * Симулирует worker: job->handle() → {@see TransactionProcessorService::process()}.
+     *
+     * @throws Throwable
      */
     public function test_transaction_completion_writes_outbox_message(): void
     {
@@ -137,6 +143,8 @@ final class OutboxPatternTest extends TestCase
      * PublishOutboxMessageJob переводит outbox-запись в status published.
      *
      * Transport ({@see OutboxPublisher}) вызывается синхронно в handle() без queue worker.
+     *
+     * @throws Throwable
      */
     public function test_publish_outbox_job_marks_message_as_published(): void
     {
@@ -219,6 +227,7 @@ final class OutboxPatternTest extends TestCase
 
         $this->assertSame($transaction->uuid, $failedMessage->payload['transaction_uuid']);
         $this->assertSame($transaction->failure_reason, $failedMessage->payload['failure_reason']);
+        $this->assertSame(InsufficientFundsException::class, $failedMessage->payload['exception_class'] ?? null);
     }
 
     /**
@@ -257,5 +266,38 @@ final class OutboxPatternTest extends TestCase
 
         $this->assertDatabaseCount('outbox_messages', 2);
         $this->assertSame(1, OutboxMessage::query()->where('event_name', 'transaction.failed')->count());
+    }
+
+    /**
+     * Retry failed-транзакции создаёт transaction.retried в outbox.
+     *
+     * Проверяет событие `transaction.retried` через {@see TransactionService::retry()}.
+     *
+     * @throws Throwable
+     */
+    public function test_retry_writes_transaction_retried_outbox_event(): void
+    {
+        Queue::fake();
+
+        $account = Account::factory()->create();
+
+        $transaction = Transaction::query()->create([
+            'type'                   => TransactionType::Deposit,
+            'status'                 => TransactionStatus::Failed,
+            'source_account_id'      => null,
+            'target_account_id'      => $account->id,
+            'amount'                 => 1000,
+            'currency'               => 'RUB',
+            'idempotency_key'        => 'retry-outbox-001',
+            'idempotency_expires_at' => now()->addDay(),
+            'failure_reason'         => 'test',
+        ]);
+
+        app(TransactionService::class)->retry($transaction->uuid);
+
+        $this->assertDatabaseHas('outbox_messages', [
+            'event_name'     => 'transaction.retried',
+            'aggregate_uuid' => $transaction->uuid,
+        ]);
     }
 }

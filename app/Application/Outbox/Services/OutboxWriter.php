@@ -5,57 +5,50 @@ declare(strict_types=1);
 namespace App\Application\Outbox\Services;
 
 use App\Application\Outbox\Jobs\PublishOutboxMessageJob;
+use App\Application\Outbox\Mappers\DomainEventToOutboxMessageMapper;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Application\Transaction\Services\TransactionService;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Outbox\Models\OutboxMessage;
-use App\Domain\Transaction\Models\Transaction;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Context;
+use App\Domain\Shared\Events\IDomainEvent;
+use App\Domain\Transaction\Events\TransactionCreated;
 
 /**
- * Application-сервис записи доменных событий в transactional outbox.
+ * Application-сервис записи типизированных доменных событий в transactional outbox.
+ *
+ * Единственный способ записи: {@see recordEvent()} + {@see IDomainEvent}.
  *
  * Единая точка INSERT в {@see OutboxMessage}. Вызывается из
- * {@see TransactionService} и
- * {@see TransactionProcessorService}
+ * {@see TransactionService} и {@see TransactionProcessorService}
  * **внутри** DB-транзакции — до commit бизнес-изменения.
  *
  * Writer не dispatch'ит jobs и не публикует во внешний broker;
  * это ответственность scheduler + {@see PublishOutboxMessageJob}.
+ *
+ * @see DomainEventToOutboxMessageMapper
  */
-final class OutboxWriter
+final readonly class OutboxWriter
 {
+    public function __construct(
+        private DomainEventToOutboxMessageMapper $domainEventToOutboxMapper,
+    ) {}
+
     /**
-     * Создаёт pending-запись outbox для доменного события.
+     * Создаёт запись outbox в статусе pending из типизированного доменного события.
      *
-     * В headers автоматически добавляются:
-     * - `request_id` из {@see Context} (если есть HTTP-запрос);
-     * - `occurred_at` — ISO8601 timestamp момента записи.
+     * Транспортные заголовки (`request_id`, `occurred_at`) добавляет {@see DomainEventToOutboxMessageMapper}.
      *
-     * @param  string               $eventName Имя события, например transaction.created
-     * @param  Model                $aggregate Затронутый агрегат ({@see Transaction} и т.д.)
-     * @param  array<string, mixed> $payload   Тело события для downstream-потребителей
-     * @param  array<string, mixed> $headers   Дополнительные метаданные
-     * @return OutboxMessage        Созданная запись со status {@see OutboxStatus::Pending}
+     * @param  IDomainEvent  $event Типизированное доменное событие ({@see TransactionCreated} и др.)
+     * @return OutboxMessage Созданная запись со статусом {@see OutboxStatus::Pending}
      */
-    public function record(string $eventName, Model $aggregate, array $payload, array $headers = []): OutboxMessage
+    public function recordEvent(IDomainEvent $event): OutboxMessage
     {
-        $headers = array_merge([
-            'request_id'  => Context::get('request_id'),
-            'occurred_at' => now()->toISOString(),
-        ], $headers);
-
-        return OutboxMessage::query()->create([
-            'event_name'     => $eventName,
-            'aggregate_type' => $aggregate::class,
-            'aggregate_id'   => $aggregate->getKey(),
-            'aggregate_uuid' => $aggregate->uuid ?? null,
-            'payload'        => $payload,
-            'headers'        => $headers,
-            'status'         => OutboxStatus::Pending->value,
-            'available_at'   => now(),
-        ]);
-
+        return OutboxMessage::query()->create(array_merge(
+            $this->domainEventToOutboxMapper->map($event),
+            [
+                'status'       => OutboxStatus::Pending->value,
+                'available_at' => now(),
+            ],
+        ));
     }
 }

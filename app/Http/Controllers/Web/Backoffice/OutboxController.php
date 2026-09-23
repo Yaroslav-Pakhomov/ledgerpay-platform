@@ -23,7 +23,7 @@ final class OutboxController extends Controller
      *
      * Query-параметры:
      * - `status` — значение {@see OutboxStatus} (pending, processing, published, failed);
-     * - `event_name` — имя доменного события (transaction.created, transaction.completed, transaction.failed).
+     * - `event_name` — имя доменного события (transaction.created, transaction.completed, transaction.failed, transaction.retried).
      *
      * @param  Request  $request Query: status, event_name, page
      * @return Response Inertia-страница Backoffice/Outbox

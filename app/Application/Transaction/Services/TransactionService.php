@@ -13,6 +13,8 @@ use App\Application\Transaction\Results\TransactionCreationResult;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
+use App\Domain\Transaction\Events\TransactionCreated;
+use App\Domain\Transaction\Events\TransactionRetried;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -21,8 +23,10 @@ use Throwable;
  * Application Service для создания и постановки транзакций в очередь.
  *
  * HTTP-слой создает транзакцию в статусе Pending, записывает outbox-событие
- * `transaction.created` через {@see OutboxWriter} (в той же DB-транзакции)
- * и dispatch'ит {@see ProcessTransactionJob}.
+ * {@see TransactionCreated} через {@see OutboxWriter::recordEvent()}
+ * (в той же DB-транзакции) и dispatch'ит {@see ProcessTransactionJob}.
+ *
+ * Ручной retry эмитит {@see TransactionRetried} при переводе Failed → Pending.
  *
  * Фактическое движение денег выполняет {@see TransactionProcessorService} в worker'е.
  */
@@ -184,9 +188,14 @@ final readonly class TransactionService
     /**
      * Повторно ставит failed-транзакцию в очередь на обработку.
      *
-     * Application use case для ручного retry: переводит агрегат
-     * из Failed обратно в Pending и dispatch'ит job.
+     * Application use case для ручного retry:
+     * - переводит агрегат из Failed обратно в Pending;
+     * - записывает outbox {@see TransactionRetried} в той же DB-транзакции;
+     * - dispatch'ит {@see ProcessTransactionJob}.
+     *
      * Повторная обработка допустима только для failed-транзакций.
+     *
+     * @throws Throwable
      */
     public function retry(string $transactionUuid): Transaction
     {
@@ -198,14 +207,20 @@ final readonly class TransactionService
             return $transaction;
         }
 
-        /**
-         * Сбрасываем статус агрегата перед повторной постановкой в очередь.
-         * failure_reason очищается, чтобы worker мог обработать транзакцию заново.
-         */
-        $transaction->update([
-            'status'         => TransactionStatus::Pending,
-            'failure_reason' => null,
-        ]);
+        DB::transaction(function () use ($transaction): void {
+            /**
+             * Сбрасываем статус агрегата перед повторной постановкой в очередь.
+             * failure_reason очищается, чтобы worker мог обработать транзакцию заново.
+             */
+            $transaction->update([
+                'status'         => TransactionStatus::Pending,
+                'failure_reason' => null,
+            ]);
+
+            $this->outboxWriter->recordEvent(
+                new TransactionRetried($transaction->refresh()),
+            );
+        });
 
         ProcessTransactionJob::dispatch($transaction->id);
 
@@ -259,20 +274,11 @@ final readonly class TransactionService
             $transaction = $callbackTransaction();
 
             /**
-             * Outbox: transaction.created — в той же DB-транзакции, что и INSERT transaction.
-             * Гарантирует, что downstream узнает о создании операции после commit.
+             * Outbox: {@see TransactionCreated} — в той же DB-транзакции, что и INSERT transaction.
+             * Гарантирует, что внешние потребители узнают о создании операции после commit.
              */
-            $this->outboxWriter->record(
-                eventName: 'transaction.created',
-                aggregate: $transaction,
-                payload: [
-                    'transaction_uuid'  => $transaction->uuid,
-                    'type'              => $transaction->type->value,
-                    'amount'            => $transaction->amount,
-                    'currency'          => $transaction->currency,
-                    'source_account_id' => $transaction->source_account_id,
-                    'target_account_id' => $transaction->target_account_id,
-                ],
+            $this->outboxWriter->recordEvent(
+                new TransactionCreated($transaction),
             );
 
             return new TransactionCreationResult(

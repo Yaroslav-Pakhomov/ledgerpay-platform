@@ -60,6 +60,7 @@ function applyFilters() {
                         <option value="">Все</option>
                         <option value="transaction.created">transaction.created</option>
                         <option value="transaction.completed">transaction.completed</option>
+                        <option value="transaction.retried">transaction.retried</option>
                         <option value="transaction.failed">transaction.failed</option>
                     </select>
                 </div>
