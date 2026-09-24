@@ -282,7 +282,7 @@ ProcessTransactionJob
 ### HTTP flow
 
 ```text
-POST /api/transactions/transfer
+POST /api/v1/transactions/transfer
         ↓
 Validate request
         ↓
@@ -401,10 +401,10 @@ REST API использует Laravel Sanctum.
 Поддерживаются:
 
 ```text
-POST /api/auth/register
-POST /api/auth/login
-GET  /api/auth/me
-POST /api/auth/logout
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
 ```
 
 После успешной аутентификации клиент работает с API через Bearer token.
@@ -420,39 +420,40 @@ POST /api/auth/logout
 ### Authentication
 
 ```text
-POST   /api/auth/register
-POST   /api/auth/login
-GET    /api/auth/me
-POST   /api/auth/logout
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+GET    /api/v1/auth/me
+POST   /api/v1/auth/logout
 ```
+Legacy `POST /api/auth/*` по-прежнему работает, но deprecated (см. [API versioning](./docs/api-versioning.md)).
 
 ### Customers
 
 ```text
-GET    /api/customers
-POST   /api/customers
-GET    /api/customers/{uuid}
+GET    /api/v1/customers
+POST   /api/v1/customers
+GET    /api/v1/customers/{uuid}
 ```
 
 ### Accounts
 
 ```text
-GET    /api/accounts
-POST   /api/accounts
-GET    /api/accounts/{uuid}
-GET    /api/accounts/{uuid}/balance
-GET    /api/accounts/{uuid}/ledger
+GET    /api/v1/accounts
+POST   /api/v1/accounts
+GET    /api/v1/accounts/{uuid}
+GET    /api/v1/accounts/{uuid}/balance
+GET    /api/v1/accounts/{uuid}/ledger
 ```
 
 ### Transactions
 
 ```text
-GET    /api/transactions
-POST   /api/transactions/deposit
-POST   /api/transactions/withdraw
-POST   /api/transactions/transfer
-POST   /api/transactions/{uuid}/retry
-GET    /api/transactions/{uuid}
+GET    /api/v1/transactions
+POST   /api/v1/transactions/deposit
+POST   /api/v1/transactions/withdraw
+POST   /api/v1/transactions/transfer
+POST   /api/v1/transactions/{uuid}/retry
+GET    /api/v1/transactions/{uuid}
 ```
 
 Полный API-контракт описан в OpenAPI specification:
@@ -466,7 +467,7 @@ GET    /api/transactions/{uuid}
 Получение Bearer token:
 
 ```text
-POST /api/auth/login
+POST /api/v1/auth/login
 ```
 
 После авторизации можно выполнить денежную операцию.
@@ -474,7 +475,7 @@ POST /api/auth/login
 Пример deposit:
 
 ```bash
-curl -X POST http://localhost/api/transactions/deposit \
+curl -X POST http://localhost/api/v1/transactions/deposit \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -H "Idempotency-Key: deposit-demo-001" \
@@ -484,6 +485,14 @@ curl -X POST http://localhost/api/transactions/deposit \
     "currency": "RUB"
   }'
 ```
+
+### API versioning
+
+Стабильный контракт: **`/api/v1/*`**.
+
+Legacy **`/api/*`** (без `v1`) — временные aliases с заголовками deprecation (`Deprecation`, `Sunset`, `Link`).
+
+Подробнее: [docs/api-versioning.md](./docs/api-versioning.md).
 
 ---
 

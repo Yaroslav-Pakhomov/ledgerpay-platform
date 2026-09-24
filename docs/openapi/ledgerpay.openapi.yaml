@@ -1,6 +1,6 @@
 # LedgerPay API — OpenAPI 3.0 spec (canonical source of truth)
 #
-# Покрывает все маршруты из routes/api.php:
+# Покрывает маршруты из routes/api_v1.php (стабильный контракт /api/v1):
 #   Auth (4), Customers (3), Accounts (5), Transactions (6)
 #
 # Конвенции:
@@ -30,11 +30,14 @@ info:
     Ошибки возвращаются в формате RFC 7807 Problem Details
     с полем `request_id` (корреляция с X-Request-Id).
 
+    Ответы включают заголовок `X-API-Version: v1`.
+    Legacy `/api/*` (без v1) — deprecated; см. docs/api-versioning.md.
+
 servers:
-  - url: http://localhost/api
-    description: Локальная среда
-  - url: http://localhost:8080/api
-    description: Локальная среда (Sail)
+  - url: http://localhost/api/v1
+    description: Локальная среда (v1)
+  - url: http://localhost:8080/api/v1
+    description: Локальная среда (Sail, v1)
 
 # Bearer token (Sanctum) для всех endpoints, кроме register/login
 security:

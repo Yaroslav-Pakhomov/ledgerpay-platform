@@ -14,9 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response as ResponseAlias;
 
-// use Symfony\Component\HttpFoundation\Response as ResponseAlias;
-
-final class CustomerController extends Controller
+class CustomerController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {

@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * @mixin Transaction
  */
-final class TransactionResource extends JsonResource
+class TransactionResource extends JsonResource
 {
     #[\Override]
     public function toArray(Request $request): array

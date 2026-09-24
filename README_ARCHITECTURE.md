@@ -8,8 +8,9 @@
 |----------|----------|
 | [README.md](./README.md) | Точка входа: setup, Swagger, curl-примеры |
 | [Swagger UI](http://localhost/api/docs) | Интерактивная документация API (нужен запущенный Sail) |
-| [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) | OpenAPI 3.0 spec (исходник контракта) |
-| [docs/architecture/README.md](./docs/architecture/README.md) | ADR-001..004 и оглавление |
+| [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) | OpenAPI 3.0 spec (исходник контракта v1) |
+| [docs/api-versioning.md](./docs/api-versioning.md) | Версионирование API: `/api/v1`, legacy aliases, заголовки |
+| [docs/architecture/README.md](./docs/architecture/README.md) | ADR и оглавление (001–009) |
 | [context.md](./docs/architecture/context.md) | Контекстная диаграмма |
 | [swagger.md](./docs/architecture/swagger.md) | Как устроены OpenAPI и Swagger UI |
 
@@ -133,12 +134,17 @@ app/
 ├── Support/Http/         # ProblemDetails (RFC 7807)
 └── Http/
     ├── Controllers/
-    │   ├── Api/          # REST-контроллеры (Sanctum)
+    │   ├── Api/          # REST: base-контроллеры (логика)
+    │   │   └── V1/       # Thin wrappers для стабильного контракта /api/v1/*
     │   └── Web/          # Inertia UI: dashboard, backoffice
-    ├── Middleware/       # RequestIdMiddleware, ApiRequestLoggingMiddleware, EnsureBackofficeUser, …
+    ├── Middleware/       # RequestId, ApiRequestLogging, SecurityHeaders,
+    │                     # ApiVersionHeader, DeprecatedApiVersion (legacy), …
     ├── Requests/         # Form Request validation
-    └── Resources/        # JSON-сериализация (uuid, не id)
+    └── Resources/        # JSON (uuid, minor units)
+        └── V1/           # Aliases публичного контракта v1 (наследуют base)
 ```
+
+Маршруты REST: **`routes/api_v1.php`** (канон, prefix `/api/v1`) + legacy aliases в **`routes/api.php`** под middleware `api.deprecated` (без route names). Имена `route('api.*')` резолвятся в **`/api/v1/...`**.
 
 **Правило зависимостей:** Domain не знает про HTTP и Jobs. Application знает про Domain и Laravel (DB, Queue). HTTP знает про Application и Domain (read-запросы вроде `index`/`show`). Authorization — Laravel Policies в `app/Policies/`, вызываются из контроллеров через `$this->authorize()`.
 
@@ -204,7 +210,7 @@ Transaction (1) ──< LedgerEntry (N)
 ### Этап 1 — HTTP: создание намерения (sync)
 
 ```
-Client POST /api/transactions/deposit
+Client POST /api/v1/transactions/deposit
     │
     ▼
 DepositRequest (валидация + Idempotency-Key)
@@ -221,7 +227,7 @@ HTTP 201 Created (новая транзакция, status: pending)
 HTTP 200 OK (idempotent replay — тот же uuid, без повторного dispatch)
 ```
 
-Контракт **201 / 200** зафиксирован в [OpenAPI](./docs/openapi/ledgerpay.openapi.yaml) и feature-тестах (`TransactionApiTest`, `TransactionProcessingTest`).
+Контракт **201 / 200** зафиксирован в [OpenAPI](./docs/openapi/ledgerpay.openapi.yaml) и feature-тестах (`TransactionApiTest`, `TransactionProcessingTest`). Часть тестов по-прежнему вызывает legacy URL `/api/*` — поведение идентично v1.
 
 **Почему async:**  
 HTTP не должен ждать блокировок счетов, retry доменных ошибок и записи в ledger. Клиент получает подтверждение «запрос принят» и может запросом смотреть статус по `uuid`.
@@ -313,7 +319,7 @@ $existing = findByIdempotencyKey($key);
 
 ### Retry failed-транзакций
 
-`POST /api/transactions/{uuid}/retry` — явный use case:
+`POST /api/v1/transactions/{uuid}/retry` — явный use case (legacy: `POST /api/transactions/{uuid}/retry`, deprecated):
 
 1. Только для `Failed`.
 2. Сброс в `Pending`, очистка `failure_reason`.
@@ -387,12 +393,31 @@ Trim пробелов в ключе — защита от «разных» кл�
 JSON отдаёт **uuid**, не numeric `id`.  
 Amount — integer (minor units).  
 Status/type — string enum values.  
-Списки и create-ответы оборачиваются в `{ "data": ... }` (Laravel API Resources). **`GET /api/transactions/{uuid}`** (`show`) — исключение: плоский JSON без обёртки `data` (через `TransactionResource::resolve()`).
+Списки и create-ответы оборачиваются в `{ "data": ... }` (Laravel API Resources). **`GET /api/v1/transactions/{uuid}`** (`show`) — исключение: плоский JSON без обёртки `data` (через `TransactionResource::resolve()`).
+
+Публичный контракт v1 зафиксирован namespace **`App\Http\Resources\V1\*`** (thin aliases над base resources).
+
+### Версионирование API
+
+| Префикс | Роль |
+|---------|------|
+| **`/api/v1/*`** | Стабильный публичный контракт (OpenAPI, новые интеграции) |
+| **`/api/*`** (без `v1`) | Deprecated compatibility alias; middleware `api.deprecated` |
+
+Заголовки ответа:
+
+- **`/api/v1/*`:** `X-API-Version: v1`
+- **Legacy `/api/*`:** `X-API-Version: legacy`, `Deprecation: true`, `Sunset`, `Link: </api/v1>; rel="successor-version"`
+
+Регистрация: `Route::prefix('v1')->group(routes/api_v1.php)`; legacy — те же URI на base `Api\*` controllers. HTTP entry v1 — `Api\V1\*` (наследуют base).
+
+Подробнее: [docs/api-versioning.md](./docs/api-versioning.md).
 
 ### Аутентификация и авторизация
 
 - **Sanctum** — bearer token на всех business routes (`auth:sanctum`).
-- **Auth API:** `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+- **Auth API (канон):** `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`, `POST /api/v1/auth/logout`.
+- Legacy `/api/auth/*` — тот же JSON-контракт, deprecated headers.
 - **Policies** (`AccountPolicy`, `TransactionPolicy`, `CustomerPolicy`) — customer (клиент) видит только свои счета/транзакции; backoffice user — все.
 - Контроллеры вызывают `$this->authorize()` до write и на read по uuid.
 
@@ -401,6 +426,7 @@ Status/type — string enum values.
 - **RFC 7807 Problem Details** — ошибки API в `application/problem+json` (`ProblemDetails`, `bootstrap/app.php`).
 - **X-Request-Id** — correlation id через `RequestIdMiddleware` (генерируется или пробрасывается клиентом); попадает в логи и `audit_logs.request_id`.
 - **Structured API logging** — `ApiRequestLoggingMiddleware` на API stack (request/response metadata с `request_id`).
+- **X-API-Version** — `ApiVersionHeaderMiddleware` на api stack (`v1` vs `legacy`).
 - Доменные нарушения (`IDomainRuleViolation`) → **409**; validation → **422**; auth → **401/403**.
 
 ### Read vs Write asymmetry
@@ -416,34 +442,33 @@ Read-модели простые, без инвариантов. При рост
 ### Маршруты API (Sanctum)
 
 ```
-# Auth (часть без token, часть с auth:sanctum)
-POST   /api/auth/register
-POST   /api/auth/login
-GET    /api/auth/me
-POST   /api/auth/logout
+# Канонический контракт — /api/v1 (имена route('api.*') → v1)
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+GET    /api/v1/auth/me
+POST   /api/v1/auth/logout
 
-# Customers (backoffice)
-GET    /api/customers
-POST   /api/customers
-GET    /api/customers/{uuid}
+GET    /api/v1/customers
+POST   /api/v1/customers
+GET    /api/v1/customers/{uuid}
 
-# Accounts
-GET    /api/accounts
-POST   /api/accounts
-GET    /api/accounts/{uuid}
-GET    /api/accounts/{uuid}/balance
-GET    /api/accounts/{uuid}/ledger
+GET    /api/v1/accounts
+POST   /api/v1/accounts
+GET    /api/v1/accounts/{uuid}
+GET    /api/v1/accounts/{uuid}/balance
+GET    /api/v1/accounts/{uuid}/ledger
 
-# Transactions (Idempotency-Key на deposit/withdraw/transfer)
-GET    /api/transactions
-POST   /api/transactions/deposit
-POST   /api/transactions/withdraw
-POST   /api/transactions/transfer
-POST   /api/transactions/{uuid}/retry
-GET    /api/transactions/{uuid}
+GET    /api/v1/transactions
+POST   /api/v1/transactions/deposit      # Idempotency-Key
+POST   /api/v1/transactions/withdraw
+POST   /api/v1/transactions/transfer
+POST   /api/v1/transactions/{uuid}/retry
+GET    /api/v1/transactions/{uuid}
+
+# Legacy (deprecated, без named routes): те же пути под /api/...
 ```
 
-Полный контракт API — [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) · интерактивно: [Swagger UI](http://localhost/api/docs) (local, Sail).
+Полный контракт v1 — [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) (server `.../api/v1`) · Swagger UI: [http://localhost/api/docs](http://localhost/api/docs) (local, Sail).
 
 ### Web UI (Inertia)
 
@@ -463,7 +488,8 @@ Feature-тесты сгруппированы по контрактам:
 | Группа | Файлы | Что проверяет |
 |--------|-------|---------------|
 | **Transactions (HTTP + async)** | `Api/TransactionApiTest`, `TransactionProcessingTest`, `LedgerImmutabilityTest` | Validation, idempotency (201/200), error responses; `Queue::fake()` + `job->handle()`; append-only ledger |
-| **API auth & CRUD** | `Api/AuthApiTest`, `Api/AccountApiTest`, `Api/CustomerApiTest` | Register/login, accounts, customers |
+| **API auth & CRUD** | `Api/AuthApiTest`, `Api/AccountApiTest`, `Api/CustomerApiTest` | Register/login, accounts, customers (часть URL — legacy `/api/*`; `route('api.*')` — v1) |
+| **API versioning** | `ApiVersioningTest` | Заголовки v1/legacy, `/api/v1/*`, Sunset на legacy |
 | **Authorization** | `Api/AccountAuthorizationTest`, `BackofficeAccessTest` | Policies: customer vs backoffice |
 | **Errors & correlation** | `Api/ApiErrorHandlingTest` | Problem Details, `X-Request-Id` |
 | **Audit** | `AuditLogTest` | Immutable audit + события из HTTP/worker |
@@ -496,7 +522,7 @@ composer rector      # apply refactoring
 Подробнее: [docs/quality.md](./docs/quality.md).
 
 - `declare(strict_types=1)` — везде.
-- `final` на сервисах и контроллерах — явный запрет на неожиданное наследование.
+- `final` на application services и V1 wrappers; **base** API controllers/resources открыты для наследования **`Api\V1\*`**.
 - `readonly` на application services — immutability зависимостей через constructor injection.
 
 ### CI
@@ -533,7 +559,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 Естественные следующие шаги без ломки текущей архитектуры:
 
 1. **Scoped idempotency** — `(customer_id, idempotency_key)` unique вместо global; ключ уникален в рамках клиента, а не всей системы — разные клиенты могут использовать одинаковые ключи без конфликта.
-2. **Rate limiting и scoped tokens** — расширить throttling на API auth и money movement (web login уже ограничен в `LoginRequest`); Sanctum abilities per scope — минимальные права токена.
+2. **API v2+ / эволюция JSON** — breaking changes только через новую версию; v1 отделён (`Api/V1`, `Resources/V1`, ADR при необходимости). Rate limiting на API — реализован (ADR-008); дальше — scoped Sanctum tokens.
 3. **Outbox + типизированные доменные события** — реализован (ADR-006, ADR-009): `transaction.created` / `transaction.completed` / `transaction.failed` / `transaction.retried`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
 4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
 5. **Observability** — Telescope в dev; добавить **OpenAPI lint** в CI (`quality:ci` и `npm run build` уже в [GitHub Actions](./.github/workflows/ci.yml)).
@@ -543,7 +569,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 ## Диаграмма: полный путь deposit
 
 ```
-┌──────────┐  POST /api/transactions/deposit  ┌───────────────────────┐
+┌──────────┐  POST /api/v1/transactions/deposit  ┌───────────────────────┐
 │  Client  │ ────────────────────────────────►│ TransactionController │
 └──────────┘   Idempotency-Key + Bearer token └────────┬──────────────┘
                                                        │
@@ -574,4 +600,4 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 
 ---
 
-*Документ отражает состояние кодовой базы на ветке `develop`. См. также [ADR](./docs/architecture/README.md) и [OpenAPI spec](./docs/openapi/ledgerpay.openapi.yaml).*
+*Документ отражает состояние кодовой базы на ветке `develop`. См. также [API versioning](./docs/api-versioning.md), [ADR](./docs/architecture/README.md) и [OpenAPI spec](./docs/openapi/ledgerpay.openapi.yaml).*

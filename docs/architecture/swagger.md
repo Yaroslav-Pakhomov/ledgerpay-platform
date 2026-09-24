@@ -20,7 +20,7 @@ GET /api/docs/openapi.yaml              ← ApiDocsController::spec()
          ↓
 GET /api/docs                           ← Swagger UI (HTML + JS с CDN)
          ↓
-Браузер → Try it out → реальные запросы на http://localhost/api/...
+Браузер → Try it out → реальные запросы на http://localhost/api/v1/...
 ```
 
 ### 1. OpenAPI spec (`ledgerpay.openapi.yaml`)
@@ -30,7 +30,7 @@ GET /api/docs                           ← Swagger UI (HTML + JS с CDN)
 | Секция | Назначение |
 |--------|------------|
 | `info` | Название, версия, общее описание |
-| `servers` | Базовый URL (`http://localhost/api`) |
+| `servers` | Базовый URL (`http://localhost/api/v1`) |
 | `paths` | Эндпоинты: `/auth/login`, `/transactions/deposit`, … |
 | `components` | Переиспользуемые части: schemas, responses, parameters |
 | `security` | Глобальная auth (у вас — Bearer Sanctum) |
@@ -75,7 +75,7 @@ Swagger **не генерируется из PHP-кода** — контролл
 4. UI строит список эндпоинтов по `tags` (Auth, Customers, Accounts, Transactions…).
 5. Вы нажимаете **Authorize** → вводите `Bearer <token>` из `/auth/login`.
 6. **Try it out** на `POST /transactions/deposit`:
-    - Swagger собирает URL: `servers[0].url` + path → `http://localhost/api/transactions/deposit`;
+    - Swagger собирает URL: `servers[0].url` + path → `http://localhost/api/v1/transactions/deposit`;
     - добавляет заголовки: `Authorization`, `Idempotency-Key`, `Content-Type`;
     - отправляет реальный HTTP-запрос из браузера;
     - показывает status code и body ответа.
@@ -96,7 +96,7 @@ sequenceDiagram
 
     Browser->>SwaggerUI: Authorize Bearer token
     Browser->>SwaggerUI: Try it out deposit
-    SwaggerUI->>API: POST /api/transactions/deposit
+    SwaggerUI->>API: POST /api/v1/transactions/deposit
     API-->>SwaggerUI: 201 + JSON
     SwaggerUI-->>Browser: показать ответ
 ```
@@ -205,4 +205,4 @@ Swagger только **документирует и тестирует**. Он 
 
 ---
 
-**Итог:** Swagger в данном проекте — это **OpenAPI YAML (контракт)** + **Swagger UI (интерактивная документация)** + **тонкий Laravel-слой для отдачи файлов**. Реальный API работает как обычно через `routes/api.php`; Swagger лишь помогает его понять, показать и протестировать локально.
+**Итог:** Swagger в данном проекте — это **OpenAPI YAML (контракт v1)** + **Swagger UI (интерактивная документация)** + **тонкий Laravel-слой для отдачи файлов**. Канонический REST — `routes/api_v1.php` (`/api/v1/*`); legacy `/api/*` — deprecated aliases ([api-versioning.md](../api-versioning.md)). Swagger помогает понять и протестировать v1 локально.

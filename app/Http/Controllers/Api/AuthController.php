@@ -15,7 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
-final class AuthController extends Controller
+class AuthController extends Controller
 {
     /**
      * Регистрация Клиента

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Domain\Shared\Exceptions\IDomainRuleViolation;
 use App\Http\Middleware\ApiRequestLoggingMiddleware;
+use App\Http\Middleware\ApiVersionHeaderMiddleware;
+use App\Http\Middleware\DeprecatedApiVersionMiddleware;
 use App\Http\Middleware\EnsureBackofficeUser;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestIdMiddleware;
@@ -34,7 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'backoffice' => EnsureBackofficeUser::class,
+            'backoffice'     => EnsureBackofficeUser::class,
+            'api.deprecated' => DeprecatedApiVersionMiddleware::class,
         ]);
 
         $middleware->web(append: [
@@ -47,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             RequestIdMiddleware::class,
             ApiRequestLoggingMiddleware::class,
             SecurityHeadersMiddleware::class,
+            ApiVersionHeaderMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -38,7 +38,7 @@ use Throwable;
  *  • view проходит на любой счёт,
  *  • create тоже — может операции по любым счетам.
  */
-final class TransactionController extends Controller
+class TransactionController extends Controller
 {
     /**
      * Возвращает список транзакций с пагинацией.

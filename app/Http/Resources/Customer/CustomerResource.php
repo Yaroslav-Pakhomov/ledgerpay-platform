@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * @property mixed      $status
  * @property mixed|null $created_at
  */
-final class CustomerResource extends JsonResource
+class CustomerResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

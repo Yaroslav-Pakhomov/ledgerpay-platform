@@ -11,7 +11,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * @mixin LedgerEntry
  */
-final class LedgerEntryResource extends JsonResource
+class LedgerEntryResource extends JsonResource
 {
     #[\Override]
     public function toArray(Request $request): array
