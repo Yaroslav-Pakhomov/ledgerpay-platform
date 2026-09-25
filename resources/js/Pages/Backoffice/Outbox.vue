@@ -1,6 +1,10 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {Link, router, useForm} from '@inertiajs/vue3';
+import EmptyState from '@/Components/UI/EmptyState.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
+import StatusBadge from '@/Components/UI/StatusBadge.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -30,16 +34,16 @@ function applyFilters() {
 
 <template>
     <div class="space-y-8">
-        <section>
+        <div>
             <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
                 ← Бэк-офис
             </Link>
+        </div>
 
-            <h1 class="mt-4 text-3xl font-bold">Outbox-сообщения</h1>
-            <p class="mt-2 text-gray-400">
-                Надёжная публикация доменных событий после commit в БД.
-            </p>
-        </section>
+        <PageHeader
+            title="Outbox-сообщения"
+            description="Надёжная публикация доменных событий после commit в БД."
+        />
 
         <section class="card">
             <form class="grid gap-4 md:grid-cols-4" @submit.prevent="applyFilters">
@@ -72,7 +76,13 @@ function applyFilters() {
         </section>
 
         <section class="card">
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="messages.data.length === 0"
+                title="Outbox-сообщения не найдены"
+                description="Domain events появятся здесь после создания или обработки транзакций."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -98,16 +108,7 @@ function applyFilters() {
                             <div class="font-mono text-xs text-gray-500">{{ message.uuid }}</div>
                         </td>
                         <td>
-                                <span
-                                    class="rounded-full px-2 py-1 text-xs"
-                                    :class="{
-                                        'bg-green-950 text-green-300': message.status === 'published',
-                                        'bg-yellow-950 text-yellow-300': message.status === 'pending' || message.status === 'processing',
-                                        'bg-red-950 text-red-300': message.status === 'failed',
-                                    }"
-                                >
-                                    {{ message.status }}
-                                </span>
+                            <StatusBadge :status="message.status" />
                         </td>
                         <td>{{ message.attempts }}</td>
                         <td>
@@ -117,14 +118,9 @@ function applyFilters() {
                         <td>{{ message.published_at ?? '—' }}</td>
                         <td class="max-w-md text-red-300">{{ message.last_error ?? '—' }}</td>
                     </tr>
-
-                    <tr v-if="messages.data.length === 0">
-                        <td colspan="7" class="py-6 text-center text-gray-500">
-                            Outbox-сообщения не найдены.
-                        </td>
-                    </tr>
                     </tbody>
                 </table>
+                <Pagination :links="messages.links" />
             </div>
         </section>
     </div>

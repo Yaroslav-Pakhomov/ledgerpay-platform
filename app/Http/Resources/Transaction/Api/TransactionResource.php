@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Transaction;
+namespace App\Http\Resources\Transaction\Api;
 
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Http\Request;
@@ -17,14 +17,9 @@ class TransactionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'       => $this->id,
-            'uuid'     => $this->uuid,
-            'currency' => $this->currency,
-            'amount'   => $this->amount,
-
-            'type'   => $this->type->value,
-            'status' => $this->status->value,
-
+            'uuid'                => $this->uuid,
+            'type'                => $this->type->value,
+            'status'              => $this->status->value,
             'source_account_uuid' => $this->whenLoaded(
                 'sourceAccount',
                 fn () => $this->sourceAccount?->uuid
@@ -33,10 +28,11 @@ class TransactionResource extends JsonResource
                 'targetAccount',
                 fn () => $this->targetAccount?->uuid
             ),
-
+            'amount'         => $this->amount,
+            'currency'       => $this->currency,
             'failure_reason' => $this->failure_reason,
-
-            'created_at' => $this->created_at->toDateTimeString(),
+            'processed_at'   => $this->processed_at?->toISOString(),
+            'created_at'     => $this->created_at->toISOString(),
         ];
     }
 }

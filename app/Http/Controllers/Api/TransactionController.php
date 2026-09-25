@@ -15,7 +15,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Transaction\Api\DepositRequest;
 use App\Http\Requests\Transaction\Api\TransferRequest;
 use App\Http\Requests\Transaction\Api\WithdrawRequest;
-use App\Http\Resources\Transaction\TransactionResource;
+use App\Http\Resources\Transaction\Api\TransactionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;

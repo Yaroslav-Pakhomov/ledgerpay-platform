@@ -10,7 +10,7 @@ use App\Domain\Account\Models\Account;
 use App\Domain\Customer\Models\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreAccountRequest;
-use App\Http\Resources\Account\AccountResource;
+use App\Http\Resources\Account\Api\AccountResource;
 use App\Http\Resources\LedgerEntry\LedgerEntryResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;

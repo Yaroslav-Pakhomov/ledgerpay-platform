@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Account;
+namespace App\Http\Resources\Account\Api;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property mixed $id
  * @property mixed $uuid
  * @property mixed $customer
  * @property mixed $currency
@@ -27,16 +26,15 @@ class AccountResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'       => $this->id,
-            'uuid'     => $this->uuid,
-            'currency' => $this->currency,
-            'balance'  => $this->balance,
-            'status'   => $this->status->value,
-
-            'customer_name' => $this->whenLoaded(
+            'uuid'          => $this->uuid,
+            'customer_uuid' => $this->whenLoaded(
                 'customer',
-                fn () => $this->customer?->name
+                fn () => $this->customer?->uuid
             ),
+            'currency'   => $this->currency,
+            'balance'    => $this->balance,
+            'status'     => $this->status->value,
+            'created_at' => $this->created_at?->toISOString(),
         ];
 
     }

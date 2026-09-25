@@ -58,6 +58,18 @@ LedgerPay — backend-система для работы с клиентами, 
 * Inertia.js
 * TailwindCSS
 
+#### Frontend dashboard
+
+Панель управления Inertia/Vue включает в себя:
+
+- повторно используемые компоненты пользовательского интерфейса ("StatusBadge", "MoneyAmount", "EmptyState", "PageHeader", "Разбивка на страницы`)
+- автоматическое обновление транзакций во время ожидания заданий в очереди ("useAutoRefresh")
+- Разбивка на страницы Laravel в транзакциях панели мониторинга и бухгалтерской книге
+- пустые состояния вместо пустых таблиц
+- мониторинг в бэкофисе (транзакции, аудит, исходящие сообщения, сверка)
+
+Веб-страницы инерции используют "App\Http\Resources\Account\AccountResource" и "Transaction\TransactionResource"; REST API использует `Account\Api\*` и `Transaction\Api\*`.
+
 ### Quality & Infrastructure
 
 * Docker / Laravel Sail

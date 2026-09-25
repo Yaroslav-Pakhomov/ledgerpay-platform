@@ -4,7 +4,7 @@ import { Link, usePage, router } from '@inertiajs/vue3';
 const page = usePage();
 
 function logout() {
-    router.post('/logout');
+    router.post(route('logout'));
 }
 </script>
 
@@ -17,26 +17,46 @@ function logout() {
                 </Link>
 
                 <div class="flex items-center gap-4 text-sm">
-                    <span v-if="page.props.auth.user" class="text-gray-300">
-                        {{ page.props.auth.user.email }}
-                    </span>
+                    <Link :href="route('dashboard')" class="text-gray-300 hover:text-white">
+                        Dashboard
+                    </Link>
 
                     <Link
                         v-if="page.props.auth.user?.is_backoffice"
-                        href="/backoffice"
+                        :href="route('backoffice.dashboard')"
                         class="text-indigo-400 hover:text-indigo-300"
                     >
                         Бэк-офис
                     </Link>
 
                     <Link
+                        v-if="page.props.auth.user?.is_backoffice"
+                        :href="route('backoffice.transactions.index')"
+                        class="text-gray-300 hover:text-white"
+                    >
+                        Транзакции
+                    </Link>
+
+                    <Link
+                        v-if="page.props.auth.user?.is_backoffice"
+                        :href="route('backoffice.audit-logs.index')"
+                        class="text-gray-300 hover:text-white"
+                    >
+                        Аудит
+                    </Link>
+
+                    <Link
                         :href="route('profile.edit')"
-                        class="text-indigo-400 hover:text-indigo-300"
+                        class="text-gray-300 hover:text-white"
                     >
                         Профиль
                     </Link>
 
-                    <button class="btn-secondary" @click="logout">
+                    <span v-if="page.props.auth.user" class="hidden text-gray-500 md:inline">
+                        {{ page.props.auth.user.email }}
+                    </span>
+
+                    <button class="btn-secondary" type="button" @click="logout">
                         Выйти
                     </button>
                 </div>

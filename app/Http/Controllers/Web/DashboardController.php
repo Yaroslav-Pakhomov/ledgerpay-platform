@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Web;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Account\AccountResource;
+use App\Http\Resources\Transaction\TransactionResource;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
@@ -41,33 +43,15 @@ final class DashboardController extends Controller
             });
         }
 
+        $transactions = $transactionsQuery->paginate(20)->through(fn (Transaction $transaction) => TransactionResource::make($transaction)->resolve());
+
+        $accounts = $accountsQuery->get()->map(fn (Account $account) => AccountResource::make($account)->resolve());
+
         return inertia('Dashboard/Index', [
             // Банковские счёта
-            'accounts' => $accountsQuery->get()->map(fn (Account $account) => [
-                'id'            => $account->id,
-                'uuid'          => $account->uuid,
-                'currency'      => $account->currency,
-                'balance'       => $account->balance,
-                'status'        => $account->status->value,
-                'customer_name' => $account->customer->name,
-            ]),
+            'accounts' => $accounts,
             // Операции по счетам
-            'transactions' => $transactionsQuery->limit(20)->get()->map(fn (Transaction $transaction) => [
-                'id'       => $transaction->id,
-                'uuid'     => $transaction->uuid,
-                'currency' => $transaction->currency,
-                'amount'   => $transaction->amount,
-
-                'type'   => $transaction->type->value,
-                'status' => $transaction->status->value,
-
-                'source_account_uuid' => $transaction->sourceAccount?->uuid,
-                'target_account_uuid' => $transaction->targetAccount?->uuid,
-
-                'failure_reason' => $transaction->failure_reason,
-
-                'created_at' => $transaction->created_at->toDateTimeString(),
-            ]),
+            'transactions' => $transactions,
         ]);
     }
 }

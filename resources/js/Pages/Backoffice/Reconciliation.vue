@@ -1,7 +1,11 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
-import PaginationLinks from "@/Components/PaginationLinks.vue";
+import EmptyState from '@/Components/UI/EmptyState.vue';
+import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
+import StatusBadge from '@/Components/UI/StatusBadge.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -30,10 +34,6 @@ function runReconciliation() {
     router.post(route('backoffice.reconciliation.run'));
 }
 
-function money(amount, currency) {
-    return `${(amount / 100).toFixed(2)} ${currency}`;
-}
-
 function runForAccount(accountUuid) {
     if (!accountUuid) {
         return;
@@ -50,12 +50,18 @@ function runForAccount(accountUuid) {
                 <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
                     ← Бэк-офис
                 </Link>
-
-                <h1 class="mt-4 text-3xl font-bold">Сверка балансов</h1>
-                <p class="mt-2 text-gray-400">
-                    Сравнение сохранённых балансов с балансами, восстановленными из неизменяемого реестра.
-                </p>
             </div>
+
+            <PageHeader
+                title="Сверка балансов"
+                description="Сравнение сохранённых балансов с балансами, восстановленными из неизменяемого реестра."
+            >
+                <template #actions>
+                    <button class="btn" type="button" @click="runReconciliation">
+                        Запустить сейчас
+                    </button>
+                </template>
+            </PageHeader>
 
             <button class="btn" @click="runReconciliation">
                 Запустить сейчас
@@ -82,7 +88,13 @@ function runForAccount(accountUuid) {
         </section>
 
         <section class="card">
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="reports.data.length === 0"
+                title="Отчётов сверки нет"
+                description="Запустите сверку, чтобы получить первый отчёт."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -106,26 +118,18 @@ function runForAccount(accountUuid) {
                         <td class="py-3">{{ report.checked_at }}</td>
                         <td class="font-mono text-xs">{{ report.account_uuid }}</td>
                         <td>{{ report.customer_email ?? '—' }}</td>
-                        <td>{{ money(report.account_balance, report.currency) }}</td>
-                        <td>{{ money(report.ledger_balance, report.currency) }}</td>
+                        <td><MoneyAmount :amount="report.account_balance" :currency="report.currency" /></td>
+                        <td><MoneyAmount :amount="report.ledger_balance" :currency="report.currency" /></td>
                         <td
                             :class="{
                                     'text-green-300': report.difference === 0,
                                     'text-red-300': report.difference !== 0,
                                 }"
                         >
-                            {{ money(report.difference, report.currency) }}
+                            <MoneyAmount :amount="report.difference" :currency="report.currency" />
                         </td>
                         <td>
-                                <span
-                                    class="rounded-full px-2 py-1 text-xs"
-                                    :class="{
-                                        'bg-green-950 text-green-300': report.status === 'matched',
-                                        'bg-red-950 text-red-300': report.status === 'mismatched',
-                                    }"
-                                >
-                                    {{ report.status === 'matched' ? 'совпадает' : 'расхождение' }}
-                                </span>
+                            <StatusBadge :status="report.status" />
                         </td>
                         <td>
                             <button
@@ -139,14 +143,9 @@ function runForAccount(accountUuid) {
                         </td>
                     </tr>
 
-                    <tr v-if="reports.data.length === 0">
-                        <td colspan="8" class="py-6 text-center text-gray-500">
-                            Отчёты сверки не найдены.
-                        </td>
-                    </tr>
                     </tbody>
                 </table>
-                <PaginationLinks :links="reports.links" />
+                <Pagination :links="reports.links" />
             </div>
         </section>
     </div>

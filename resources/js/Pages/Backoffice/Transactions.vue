@@ -2,7 +2,11 @@
 
 import AppLayout from "@/Layouts/AppLayout.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
-import PaginationLinks from "@/Components/PaginationLinks.vue";
+import EmptyState from '@/Components/UI/EmptyState.vue';
+import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
+import StatusBadge from '@/Components/UI/StatusBadge.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -28,25 +32,20 @@ function applyFilters() {
         replace      : true,
     })
 }
-
-function money(amount, currency) {
-    return `${(amount / 100).toFixed(2)} ${currency}`
-}
-
 </script>
 
 <template>
     <div class="space-y-8">
-        <section>
+        <div>
             <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
                 ← Бэк-офис
             </Link>
+        </div>
 
-            <h1 class="mt-4 text-3xl font-bold">Монитор транзакций</h1>
-            <p class="mt-2 text-gray-400">
-                Просмотр транзакций на уровне бэк-офиса.
-            </p>
-        </section>
+        <PageHeader
+            title="Монитор транзакций"
+            description="Просмотр транзакций на уровне бэк-офиса."
+        />
 
         <section class="card">
             <form class="grid gap-4 md:grid-cols-3" @submit.prevent="applyFilters">
@@ -81,7 +80,13 @@ function money(amount, currency) {
         </section>
 
         <section class="card">
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="transactions.data.length === 0"
+                title="Транзакции не найдены"
+                description="Измените фильтры или создайте операцию на dashboard."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -102,18 +107,11 @@ function money(amount, currency) {
                         <td class="py-3 font-mono text-xs">{{ transaction.uuid }}</td>
                         <td>{{ transaction.type }}</td>
                         <td>
-                                <span
-                                    class="rounded-full px-2 py-1 text-xs"
-                                    :class="{
-                                        'bg-green-950 text-green-300': transaction.status === 'completed',
-                                        'bg-yellow-950 text-yellow-300': transaction.status === 'pending' || transaction.status === 'processing',
-                                        'bg-red-950 text-red-300': transaction.status === 'failed',
-                                    }"
-                                >
-                                    {{ transaction.status }}
-                                </span>
+                            <StatusBadge :status="transaction.status"/>
                         </td>
-                        <td>{{ money(transaction.amount, transaction.currency) }}</td>
+                        <td>
+                            <MoneyAmount :amount="transaction.amount" :currency="transaction.currency"/>
+                        </td>
                         <td>
                             {{ transaction.source_customer_email ?? transaction.target_customer_email ?? '—' }}
                         </td>
@@ -132,17 +130,11 @@ function money(amount, currency) {
                             </form>
                         </td>
                     </tr>
-
-                    <tr v-if="transactions.data.length === 0">
-                        <td colspan="8" class="py-6 text-center text-gray-500">
-                            Транзакции не найдены.
-                        </td>
-                    </tr>
                     </tbody>
                 </table>
+                <Pagination :links="transactions.links"/>
             </div>
 
-            <PaginationLinks :links="transactions.links" />
         </section>
     </div>
 </template>

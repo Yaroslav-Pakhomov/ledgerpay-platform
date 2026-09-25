@@ -1,8 +1,10 @@
 <script setup>
 
 import AppLayout from "@/Layouts/AppLayout.vue";
-import PaginationLinks from "@/Components/PaginationLinks.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
+import EmptyState from '@/Components/UI/EmptyState.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue';
+import Pagination from '@/Components/UI/Pagination.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -35,16 +37,14 @@ function applyFilters() {
 
 <template>
     <div class="space-y-8">
-        <section>
-            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
-                ← Бэк-офис
-            </Link>
+        <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
+            ← Бэк-офис
+        </Link>
 
-            <h1 class="mt-4 text-3xl font-bold">Журнал аудита</h1>
-            <p class="mt-2 text-gray-400">
-                Неизменяемый журнал действий для расследований и операционного контроля.
-            </p>
-        </section>
+        <PageHeader
+            title="Журнал аудита"
+            description="Неизменяемый журнал действий для расследований и операционного контроля."
+        />
 
         <section class="card">
             <form class="grid gap-4 md:grid-cols-3" @submit.prevent="applyFilters">
@@ -65,7 +65,13 @@ function applyFilters() {
         </section>
 
         <section class="card">
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="logs.data.length === 0"
+                title="Записей аудита нет"
+                description="Audited-действия появятся здесь автоматически."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -89,20 +95,15 @@ function applyFilters() {
                         </td>
                         <td class="font-mono text-xs">{{ log.request_id ?? '—' }}</td>
                         <td>
-                            <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
-                                    JSON.stringify(log.metadata, null, 2)
-                                }}</pre>
-                        </td>
-                    </tr>
-
-                    <tr v-if="logs.data.length === 0">
-                        <td colspan="6" class="py-6 text-center text-gray-500">
-                            Записи не найдены.
+                                <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
+                                        JSON.stringify(log.metadata, null, 2)
+                                    }}</pre>
                         </td>
                     </tr>
                     </tbody>
                 </table>
-                <PaginationLinks :links="logs.links" />
+
+                <Pagination :links="logs.links" />
             </div>
         </section>
     </div>

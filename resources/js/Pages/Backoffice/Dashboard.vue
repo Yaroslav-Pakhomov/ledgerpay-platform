@@ -1,6 +1,10 @@
 <script setup>
 import AppLayout from "@/Layouts/AppLayout.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
+import EmptyState from '@/Components/UI/EmptyState.vue';
+import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
+import PageHeader from '@/Components/UI/PageHeader.vue';
+import StatusBadge from '@/Components/UI/StatusBadge.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -26,21 +30,14 @@ function submitSearch() {
         replace      : true,
     })
 }
-
-function money(amount, currency) {
-    return `${(amount / 100).toFixed(2)} ${currency}`
-}
-
 </script>
 
 <template>
     <div class="space-y-8">
-        <section>
-            <h1 class="text-3xl font-bold">Бэк-офис</h1>
-            <p class="mt-2 text-gray-400">
-                Операционный мониторинг клиентов, счетов и неудачных транзакций.
-            </p>
-        </section>
+        <PageHeader
+            title="Бэк-офис"
+            description="Операционный мониторинг клиентов, счетов и неудачных транзакций."
+        />
 
         <section class="grid gap-6 lg:grid-cols-4">
             <div class="card">
@@ -101,7 +98,13 @@ function money(amount, currency) {
                 </button>
             </form>
 
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="customers.length === 0"
+                title="Клиенты не найдены"
+                description="Измените поиск или дождитесь регистрации новых клиентов."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -130,7 +133,7 @@ function money(amount, currency) {
                             </Link>
                         </td>
                         <td>{{ customer.email }}</td>
-                        <td>{{ customer.status }}</td>
+                        <td><StatusBadge :status="customer.status" /></td>
                         <td>{{ customer.accounts_count }}</td>
                         <td>{{ customer.created_at }}</td>
                         <td>
@@ -142,12 +145,6 @@ function money(amount, currency) {
                             </Link>
                         </td>
                     </tr>
-
-                    <tr v-if="customers.length === 0">
-                        <td colspan="6" class="py-6 text-center text-gray-500">
-                            Клиенты не найдены.
-                        </td>
-                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -156,7 +153,13 @@ function money(amount, currency) {
         <section class="card">
             <h2 class="mb-4 text-xl font-bold">Неудачные транзакции</h2>
 
-            <div class="overflow-x-auto">
+            <EmptyState
+                v-if="failed_transactions.length === 0"
+                title="Неудачных транзакций нет"
+                description="Failed-операции из очереди появятся здесь."
+            />
+
+            <div v-else class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="text-gray-400">
                     <tr>
@@ -178,7 +181,7 @@ function money(amount, currency) {
                     >
                         <td class="py-3 font-mono text-xs">{{ transaction.uuid }}</td>
                         <td>{{ transaction.type }}</td>
-                        <td>{{ money(transaction.amount, transaction.currency) }}</td>
+                        <td><MoneyAmount :amount="transaction.amount" :currency="transaction.currency" /></td>
                         <td>
                             {{ transaction.source_customer ?? transaction.target_customer ?? '—' }}
                         </td>
@@ -193,11 +196,6 @@ function money(amount, currency) {
                         </td>
                     </tr>
 
-                    <tr v-if="failed_transactions.length === 0">
-                        <td colspan="7" class="py-6 text-center text-gray-500">
-                            Нет неудачных транзакций.
-                        </td>
-                    </tr>
                     </tbody>
                 </table>
             </div>
