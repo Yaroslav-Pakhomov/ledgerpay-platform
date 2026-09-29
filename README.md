@@ -669,7 +669,7 @@ composer install
 ./vendor/bin/sail up -d
 
 ./vendor/bin/sail artisan key:generate
-./vendor/bin/sail artisan migrate --seed
+./vendor/bin/sail artisan migrate:fresh --seed
 
 ./vendor/bin/sail npm install
 ./vendor/bin/sail npm run build
@@ -733,6 +733,56 @@ http://localhost/api/docs
 ```env
 API_DOCS_ENABLED=false
 ```
+
+---
+
+## Демо-пользователи
+
+Бэк-офис:
+
+```text
+admin@ledgerpay.test
+StrongPassword123!
+```
+
+Клиенты:
+
+```text
+alice@ledgerpay.test
+StrongPassword123!
+
+bob@ledgerpay.test
+StrongPassword123!
+
+finance@acme.test
+StrongPassword123!
+```
+
+Заблокированный demo-клиент:
+
+```text
+blocked@ledgerpay.test
+StrongPassword123!
+```
+
+## Демо-данные
+
+После:
+
+```bash
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+В приложении будут:
+
+- реалистичные пользователи-клиенты;
+- активные и заблокированные учётные записи;
+- завершённые депозиты, выводы и переводы;
+- пример неудачной транзакции;
+- записи в бухгалтерской книге (ledger);
+- журнал аудита;
+- outbox-сообщения;
+- отчёты сверки;
 
 ---
 

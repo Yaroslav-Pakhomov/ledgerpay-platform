@@ -4,45 +4,24 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Domain\Customer\Enums\CustomerStatus;
-use App\Domain\Customer\Models\Customer;
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Throwable;
 
+/**
+ * Корневой seeder: admin бэк-офиса + полный набор демо-данных.
+ */
 final class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * @throws Throwable
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-        $customer = Customer::query()
-            ->updateOrCreate(
-                ['email' => 'ivan@mail.ru'],
-                [
-                    'name'   => 'Иван Иванов',
-                    'status' => CustomerStatus::Active,
-                ],
-            );
-
-        User::query()
-            ->updateOrCreate(
-                ['email' => 'ivan@mail.ru'],
-                [
-                    'name'        => 'Иван Иванов',
-                    'password'    => 'Q123456123456q_',
-                    'customer_id' => $customer->id,
-                ],
-            );
-        $this->command->info('Клиент приложения заполнен!');
-
         $this->call([
             BackofficeUserSeeder::class,
+            DemoDataSeeder::class,
         ]);
         $this->command->info('Пользователь бэк-офиса заполнен!');
+        $this->command->info('Демо-данные заполнены!');
     }
 }
