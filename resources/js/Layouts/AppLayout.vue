@@ -46,6 +46,14 @@ function logout() {
                     </Link>
 
                     <Link
+                        v-if="page.props.auth.user?.is_backoffice"
+                        :href="route('backoffice.diagnostics')"
+                        class="text-gray-300 hover:text-white"
+                    >
+                        Диагностика
+                    </Link>
+
+                    <Link
                         :href="route('profile.edit')"
                         class="text-gray-300 hover:text-white"
                     >

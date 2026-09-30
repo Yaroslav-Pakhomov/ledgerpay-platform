@@ -15,5 +15,6 @@
 | [ADR-007: Сверка балансов](./adr-007-reconciliation.md)                                  | Сверка сохранённого баланса с балансом, восстановленным из реестра |
 | [ADR-008: Rate limiting и abuse protection](./adr-008-rate-limiting-abuse-protection.md) | Лимиты запросов, security headers, retention idempotency keys      |
 | [ADR-009: Типизированные доменные события](./adr-009-typed-domain-events.md)           | Типизированные доменные события и преобразователь outbox          |
+| [ADR-010: Состояние, готовность и диагностика](./adr-010-health-readiness-diagnostics.md) | Liveness/readiness, CLI и страница диагностики бэк-офиса        |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

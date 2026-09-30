@@ -36,6 +36,7 @@ LedgerPay — backend-система для работы с клиентами, 
 * [Testing and Code Quality](#testing-and-code-quality)
 * [CI](#ci)
 * [Local Development](#local-development)
+* [Состояние и готовность](#состояние-и-готовность)
 * [Engineering Decisions](#engineering-decisions)
 * [Possible Next Steps](#possible-next-steps)
 * [Documentation](#documentation)
@@ -783,6 +784,35 @@ StrongPassword123!
 - журнал аудита;
 - outbox-сообщения;
 - отчёты сверки;
+
+---
+
+## Состояние и готовность
+
+**Публичные запросы**
+
+```text
+GET /api/v1/health/live
+GET /api/v1/health/ready
+```
+
+**Страница диагностики бэк-офиса:**
+
+```text
+/backoffice/diagnostics
+```
+
+**CLI:**
+
+```bash
+./vendor/bin/sail artisan diagnostics:run
+```
+
+**Проверки готовности:** PostgreSQL, Redis, backlog очереди, backlog outbox, неуспешные транзакции.
+
+**Примечание:** Laravel `GET /up` — минимальная жизнеспособность процесса; `/api/v1/health/ready` — полная готовность LedgerPay.
+
+После `migrate:fresh --seed` aggregate status часто **`warning`** из‑за demo failed-транзакции — это ожидаемо.
 
 ---
 

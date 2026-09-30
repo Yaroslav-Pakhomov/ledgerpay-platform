@@ -5,8 +5,15 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
+use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\TransactionController;
 use Illuminate\Support\Facades\Route;
+
+Route::controller(HealthController::class)->prefix('health')->name('health.')->group(function () {
+    Route::get('/live', 'live')->name('live');
+
+    Route::get('/ready', 'ready')->name('ready');
+});
 
 Route::prefix('auth')->name('api.auth.')->group(function (): void {
     Route::middleware('throttle:auth')->group(function (): void {

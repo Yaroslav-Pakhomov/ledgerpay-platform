@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\Backoffice\AuditLogController as BackofficeAuditLogController;
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
+use App\Http\Controllers\Web\Backoffice\DiagnosticsController;
 use App\Http\Controllers\Web\Backoffice\OutboxController;
 use App\Http\Controllers\Web\Backoffice\ReconciliationController;
 use App\Http\Controllers\Web\Backoffice\TransactionController as BackofficeTransactionController;
@@ -90,6 +91,8 @@ Route::middleware('auth')->group(function (): void {
 
         // Список опубликованных операций
         Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
+
+        Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
 
         Route::middleware('throttle:backoffice-heavy')->controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
             // Страница отчётов сверки

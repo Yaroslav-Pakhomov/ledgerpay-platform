@@ -1,7 +1,7 @@
 # LedgerPay API — OpenAPI 3.0 spec (canonical source of truth)
 #
 # Покрывает маршруты из routes/api_v1.php (стабильный контракт /api/v1):
-#   Auth (4), Customers (3), Accounts (5), Transactions (6)
+#   Health (2), Auth (4), Customers (3), Accounts (5), Transactions (6)
 #
 # Конвенции:
 #   - суммы в minor units (100.50 RUB = 10050)
@@ -44,6 +44,27 @@ security:
   - bearerAuth: []
 
 paths:
+  # ─── Health ─────────────────────────────────────────────────────────
+  /health/live:
+    get:
+      security: [ ]
+      summary: Проверка жизнеспособности
+      tags: [ Health ]
+      responses:
+        "200":
+          description: Приложение работает
+
+  /health/ready:
+    get:
+      security: [ ]
+      summary: Проверка готовности
+      tags: [ Health ]
+      responses:
+        "200":
+          description: Приложение готово или деградировано (warning)
+        "503":
+          description: Приложение не готово (failed)
+
   # ─── Auth ───────────────────────────────────────────────────────────
   /auth/register:
     post:
