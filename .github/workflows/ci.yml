@@ -16,7 +16,7 @@ jobs:
 
     # Переменные для всех steps job'а.
     # Перекрывают значения из .env.example (там DB_HOST=pgsql — hostname Sail, в CI его нет).
-    # SESSION/CACHE/QUEUE — in-memory/sync, Redis в CI не поднимаем.
+    # SESSION/CACHE/QUEUE — in-memory/sync; Redis — service ниже (readiness diagnostics).
     env:
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
@@ -27,6 +27,8 @@ jobs:
       SESSION_DRIVER: array
       CACHE_STORE: array
       QUEUE_CONNECTION: sync
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
 
     # Контейнер PostgreSQL — доступен на localhost:5432
     services:
@@ -41,6 +43,15 @@ jobs:
         # GitHub ждёт healthy-статус перед стартом steps
         options: >-
           --health-cmd="pg_isready -U sail"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
