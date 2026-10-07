@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/Yaroslav-Pakhomov/ledgerpay-platform/actions/workflows/ci.yml/badge.svg)
 
-**Fintech backend / portfolio project built with Laravel**
+**Fintech backend / portfolio-проект на Laravel**
 
 LedgerPay — backend-система для работы с клиентами, счетами и денежными операциями.
 
@@ -12,38 +12,54 @@ LedgerPay — backend-система для работы с клиентами, 
 * транзакционная целостность;
 * конкурентный доступ к балансам;
 * асинхронная обработка;
-* immutable ledger;
-* audit log;
+* неизменяемый реестр (ledger);
+* аудит (audit log);
 * API-контракты;
 * автоматическое тестирование и статический анализ.
 
 > LedgerPay — portfolio-проект, а не production-платёжная система.
+
 > Его цель — демонстрация инженерных подходов к проектированию backend-систем.
+
+## Документация
+
+- [Индекс документации](docs/index.md)
+- [Журнал изменений (CHANGELOG)](CHANGELOG.md)
+- [Политика безопасности](SECURITY.md)
+- [Сценарий для собеседования](docs/interview/walkthrough.md)
+- [Чеклист релиза](docs/release/release-checklist.md)
+- [Архитектурные решения (ADR)](docs/index.md#архитектурные-решения-adr)
+- [Подробная архитектура](README_ARCHITECTURE.md)
+- [Спецификация OpenAPI](docs/openapi/ledgerpay.openapi.yaml)
 
 ---
 
 ## Содержание
 
-* [Tech Stack](#tech-stack)
-* [Core Features](#core-features)
-* [Architecture](#architecture)
-* [Financial Consistency](#financial-consistency)
-* [Async Processing](#async-processing)
-* [Ledger and Audit](#ledger-and-audit)
-* [Authentication and Authorization](#authentication-and-authorization)
+* [Документация](#документация)
+* [Стек технологий](#стек-технологий)
+* [Основные возможности](#основные-возможности)
+* [Архитектура](#архитектура)
+* [Финансовая согласованность](#финансовая-согласованность)
+* [Асинхронная обработка](#асинхронная-обработка)
+* [Ledger и аудит](#ledger-и-аудит)
+* [Аутентификация и авторизация](#аутентификация-и-авторизация)
 * [REST API](#rest-api)
-* [API Errors and Observability](#api-errors-and-observability)
-* [Testing and Code Quality](#testing-and-code-quality)
-* [CI](#ci)
-* [Local Development](#local-development)
+* [Ошибки API и наблюдаемость](#ошибки-api-и-наблюдаемость)
+* [Тестирование и качество кода](#тестирование-и-качество-кода)
+* [Непрерывная интеграция (CI)](#непрерывная-интеграция-ci)
+* [Локальная разработка](#локальная-разработка)
+* [Демо-пользователи](#демо-пользователи)
+* [Демо-данные](#демо-данные)
 * [Состояние и готовность](#состояние-и-готовность)
-* [Engineering Decisions](#engineering-decisions)
-* [Possible Next Steps](#possible-next-steps)
-* [Documentation](#documentation)
+* [Инженерные решения](#инженерные-решения)
+* [Возможные следующие шаги](#возможные-следующие-шаги)
+* [Ссылки на документы](#ссылки-на-документы)
+* [Цель проекта](#цель-проекта)
 
 ---
 
-## Tech Stack
+## Стек технологий
 
 ### Backend
 
@@ -83,7 +99,7 @@ LedgerPay — backend-система для работы с клиентами, 
 
 ---
 
-## Core Features
+## Основные возможности
 
 Система поддерживает:
 
@@ -95,23 +111,23 @@ LedgerPay — backend-система для работы с клиентами, 
 * переводы между счетами;
 * просмотр баланса;
 * историю транзакций;
-* immutable ledger;
-* audit log;
-* transactional outbox;
-* сверку балансов счетов с реестром проводок;
+* неизменяемый бух. учёт (immutable ledger);
+* аудит (audit log);
+* исходящие события по транзакциям (transactional outbox);
+* сверку балансов счетов с реестром проводок (reconciliation);
 * административный backoffice.
 
 Основные операции движения денег:
 
 ```text
-deposit
-withdraw
-transfer
+пополнение (deposit)
+снятие (withdraw)
+перевод (transfer)
 ```
 
 ---
 
-## Architecture
+## Архитектура
 
 Код разделён на основные слои:
 
@@ -182,9 +198,9 @@ Account Balance + Ledger + Audit
 
 ---
 
-## Financial Consistency
+## Финансовая согласованность
 
-### Money Representation
+### Денежное представление (Money Representation)
 
 Денежные значения хранятся в **minor units**.
 
@@ -198,7 +214,7 @@ Account Balance + Ledger + Audit
 
 ---
 
-### Idempotency
+### Идемпотентность (Idempotency)
 
 Операции движения денег требуют HTTP-заголовок:
 
@@ -209,10 +225,10 @@ Idempotency-Key
 Он используется для:
 
 * защиты от повторного создания одной операции;
-* безопасного retry со стороны клиента;
+* безопасного повтора (retry) со стороны клиента;
 * предотвращения повторной постановки одной операции в очередь.
 
-Например, если клиент повторит запрос из-за network timeout с тем же:
+Например, если клиент повторит запрос из-за прерывания сети с тем же:
 
 ```http
 Idempotency-Key: transfer-123
@@ -220,7 +236,11 @@ Idempotency-Key: transfer-123
 
 новая финансовая операция создаваться не должна.
 
-На уровне БД используется unique constraint для `idempotency_key`.
+На уровне БД используется ограничение по уникальности (unique constraint) для `idempotency_key`.
+
+При создании задаётся срок действия ключа (`idempotency_expires_at`, TTL — `LEDGERPAY_IDEMPOTENCY_TTL_HOURS`, по умолчанию 24 ч). Для завершённых транзакций истёкшие ключи очищает команда `idempotency:prune-expired` (в scheduler — ежедневно). Подробнее: [ADR-004](./docs/architecture/adr-004-idempotency.md).
+
+Первое создание — **HTTP 201**, idempotent replay — **200**.
 
 Упрощённая схема:
 
@@ -236,11 +256,11 @@ Existing transaction?
 
 ---
 
-### Concurrency Control
+### Контроль конкурентности (Concurrency Control)
 
-Обработка денежных операций выполняется внутри database transaction.
+Обработка денежных операций выполняется внутри транзакций с базой данных (database transaction).
 
-Для защиты от конкурентного изменения балансов используются pessimistic row locks:
+Для защиты от конкурентного изменения балансов используются «пессимистические блокировки строк» (pessimistic row locks):
 
 ```php
 lockForUpdate()
@@ -263,7 +283,7 @@ Debit / Credit
 
 Счета блокируются в стабильном порядке по ID.
 
-Это снижает вероятность deadlock при конкурентных переводах:
+Это снижает вероятность взаимной блокировки (deadlock) при конкурентных переводах:
 
 ```text
 Request 1: Account A → Account B
@@ -274,17 +294,17 @@ Request 2: Account B → Account A
 
 ---
 
-## Async Processing
+## Асинхронная обработка
 
-HTTP request-response cycle отделён от фактического выполнения денежной операции.
+HTTP цикл "запрос-ответ" (request-response cycle) отделён от фактического выполнения денежной операции.
 
-При создании операции сначала сохраняется транзакция в состоянии:
+При создании операции сначала сохраняется транзакция в состоянии "В ожидании":
 
 ```text
 Pending
 ```
 
-После этого dispatch-ится:
+После этого отправляется (dispatch):
 
 ```text
 ProcessTransactionJob
@@ -325,9 +345,11 @@ Debit / Credit
         ↓
 Write ledger entries
         ↓
-Write audit event
-        ↓
 Completed
+        ↓
+Write outbox
+        ↓
+Write audit event
 ```
 
 Состояния транзакции:
@@ -343,6 +365,8 @@ Completed
 При ошибке:
 
 ```text
+Pending
+   ↓
 Processing
    ↓
 Failed
@@ -352,9 +376,9 @@ Failed
 
 ---
 
-## Ledger and Audit
+## Бухгалтерский учёт (Ledger) и аудит
 
-### Immutable Ledger
+### Неизменяемость бух. учёт (Immutable Ledger)
 
 Каждое фактическое движение денег фиксируется отдельной записью в ledger.
 
@@ -371,9 +395,9 @@ Ledger хранит:
 * связанную транзакцию;
 * направление движения;
 * сумму;
-* balance after operation.
+* баланс после операции.
 
-Для transfer создаются две записи:
+Для перевода создаются две записи:
 
 ```text
 Source Account
@@ -391,23 +415,23 @@ Ledger представляет историю движения средств.
 
 ---
 
-### Audit Log
+### Аудит (Audit Log)
 
 Отдельный append-only `AuditLog` используется для фиксации действий приложения и пользователей.
 
 В audit могут записываться:
 
-* authentication events;
+* события аутентификации;
 * создание счетов;
 * результаты обработки транзакций;
 * административные действия;
-* request ID.
+* ID запроса.
 
 Audit-записи также не должны изменяться или удаляться через модель после создания.
 
 ---
 
-## Authentication and Authorization
+## Аутентификация и авторизация
 
 REST API использует Laravel Sanctum.
 
@@ -430,7 +454,7 @@ POST /api/v1/auth/logout
 
 ## REST API
 
-### Authentication
+### Аутентификации (Authentication)
 
 ```text
 POST   /api/v1/auth/register
@@ -440,7 +464,7 @@ POST   /api/v1/auth/logout
 ```
 Legacy `POST /api/auth/*` по-прежнему работает, но deprecated (см. [API versioning](./docs/api-versioning.md)).
 
-### Customers
+### Клиенты (Customers)
 
 ```text
 GET    /api/v1/customers
@@ -448,7 +472,7 @@ POST   /api/v1/customers
 GET    /api/v1/customers/{uuid}
 ```
 
-### Accounts
+### Счета (Accounts)
 
 ```text
 GET    /api/v1/accounts
@@ -458,7 +482,7 @@ GET    /api/v1/accounts/{uuid}/balance
 GET    /api/v1/accounts/{uuid}/ledger
 ```
 
-### Transactions
+### Транзакции (Transactions)
 
 ```text
 GET    /api/v1/transactions
@@ -475,7 +499,7 @@ GET    /api/v1/transactions/{uuid}
 
 ---
 
-### Example Request
+### Пример зпроса (Example Request)
 
 Получение Bearer token:
 
@@ -485,7 +509,7 @@ POST /api/v1/auth/login
 
 После авторизации можно выполнить денежную операцию.
 
-Пример deposit:
+Пример пополнение (deposit):
 
 ```bash
 curl -X POST http://localhost/api/v1/transactions/deposit \
@@ -499,7 +523,7 @@ curl -X POST http://localhost/api/v1/transactions/deposit \
   }'
 ```
 
-### API versioning
+### API версионирование (versioning)
 
 Стабильный контракт: **`/api/v1/*`**.
 
@@ -509,7 +533,7 @@ Legacy **`/api/*`** (без `v1`) — временные aliases с заголо
 
 ---
 
-## API Errors and Observability
+## Ошибки API и наблюдаемость
 
 API использует структуру ошибок в стиле **Problem Details**.
 
@@ -524,7 +548,7 @@ Request ID:
 * принимается от клиента или генерируется приложением;
 * возвращается клиенту в HTTP response;
 * используется в логировании;
-* связывается с audit events.
+* связывается с аудит событиями (audit events).
 
 Это позволяет связать:
 
@@ -540,27 +564,44 @@ Audit Event
 
 ---
 
-## Testing and Code Quality
+## Тестирование и качество кода
 
 ### Feature Tests
 
-Проект содержит Feature Tests для основных контрактов системы.
+Проект содержит Feature Tests для проверки основных контрактов системы.
 
 Проверяются, в частности:
 
-* authentication;
-* accounts;
-* customers;
-* authorization;
-* создание транзакций;
-* validation;
-* idempotency;
-* asynchronous processing;
-* ledger immutability;
-* audit log;
-* API error handling;
-* `X-Request-Id`;
-* API documentation.
+**Безопасность и доступ:**
+
+* аутентификация (authentication);
+* авторизация (authorization).
+
+**Основные сущности:**
+
+* счета (accounts);
+* клиенты (customers).
+
+**Транзакции и целостность данных:**
+
+* создание транзакций (transaction creation);
+* валидация (validation);
+* идемпотентность (idempotency);
+* неизменяемость реестра операций (ledger immutability).
+
+**Асинхронная обработка:**
+
+* асинхронная обработка (asynchronous processing).
+
+**Аудит и трассировка:**
+
+* журнал аудита (audit log);
+* идентификатор запроса (`X-Request-Id`).
+
+**API:**
+
+* обработка ошибок API (API error handling);
+* документация API (API documentation).
 
 Запуск тестов:
 
@@ -604,35 +645,35 @@ make rector-test
 ### Full Quality Check
 
 ```bash
-composer quality       # pint + stan + rector
-composer ci            # + tests (CI gate)
-make ci                # + frontend build
+composer quality       # pint (fix dirty) + stan + rector + test --coverage
+composer ci            # pint --test + stan + rector + test (CI gate)
+make ci                # Sail: lint + test + frontend build
 ```
 
 Подробнее: [docs/quality.md](./docs/quality.md).
 
 ---
 
-## CI
+## Непрерывная интеграция (CI)
 
 GitHub Actions запускается для push и pull request в `develop`, `master`, `feature/**`.
 
 Pipeline включает:
 
 ```text
-Composer dependencies
+Composer + npm ci
         ↓
-Database migrations
+Laravel (.env, key, migrate --force)
         ↓
-Rector dry-run
+Frontend build (npm run build)
         ↓
-Laravel Pint
+Laravel Pint (--test)
         ↓
 PHPStan
         ↓
-PHPUnit / Feature Tests
+Rector dry-run
         ↓
-Frontend build
+PHPUnit / Feature Tests
 ```
 
 Таким образом изменения автоматически проверяются на:
@@ -645,7 +686,7 @@ Frontend build
 
 ---
 
-## Local Development
+## Локальная разработка
 
 ### Requirements
 
@@ -816,7 +857,7 @@ GET /api/v1/health/ready
 
 ---
 
-## Engineering Decisions
+## Инженерные решения
 
 В проекте осознанно используются следующие решения.
 
@@ -852,22 +893,23 @@ Ledger используется как append-only история реально
 
 Audit хранит историю действий приложения и пользователей.
 
-### Database-level invariants
+### Инварианты на уровне базы данных (Database-level invariants)
 
-Критичные финансовые инварианты enforced в PostgreSQL:
+Критичные финансовые инварианты обеспечиваются непосредственно на уровне PostgreSQL:
 
-- non-negative account balances;
-- positive transaction amounts;
-- valid transaction account shape (deposit / withdrawal / transfer);
-- immutable ledger entries (DB triggers);
-- immutable audit logs (DB triggers);
-- partial indexes для мониторинга failed/pending транзакций.
+* неотрицательный баланс счёта (non-negative account balances);
+* положительная сумма транзакции (positive transaction amounts);
+* корректная структура счетов транзакции для пополнения, списания и перевода (valid transaction account shape for deposit / withdrawal / transfer);
+* неизменяемость записей реестра операций (immutable ledger entries) с помощью триггеров базы данных (DB triggers);
+* неизменяемость журнала аудита (immutable audit logs) с помощью триггеров базы данных (DB triggers);
+* частичные индексы (partial indexes) для мониторинга транзакций со статусами `failed` и `pending`.
 
-Это защищает систему даже при обходе application-level validation.
+Это обеспечивает дополнительный уровень защиты системы даже в случае обхода валидации на уровне приложения (application-level validation).
+
 
 Подробнее: [ADR-005](./docs/architecture/adr-005-database-hardening.md).
 
-### Outbox pattern
+### Шаблон Outbox (Outbox pattern)
 
 LedgerPay записывает доменные события в `outbox_messages` в той же DB-транзакции, что и бизнес-изменение.
 
@@ -878,7 +920,7 @@ LedgerPay записывает доменные события в `outbox_messag
 - `transaction.retried` — повторная постановка Failed → Pending (ручной retry);
 - `transaction.failed` — терминальный сбой после retry.
 
-Отдельная команда dispatch'ит pending-сообщения в queue workers.
+Отдельная команда отправляет (dispatch) pending-сообщения в queue workers.
 
 Это предотвращает классическую проблему: DB commit успешен, а публикация события — нет.
 
@@ -983,7 +1025,7 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 
 ---
 
-## Possible Next Steps
+## Возможные следующие шаги
 
 Возможные направления развития проекта:
 
@@ -994,25 +1036,31 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 - **Distributed tracing** — трассировка запросов через API, очередь и worker.
 - **Load tests** — проверка системы под высокой нагрузкой.
 - **Concurrency tests** — проверка корректности конкурентных операций и блокировок.
+- публичный маршрут показа — [сценарий для собеседования](./docs/interview/walkthrough.md).
 
 ---
 
-## Documentation
+## Ссылки на документы
 
-| Документ                      | Ссылка                                                          |
-| ----------------------------- | --------------------------------------------------------------- |
-| Swagger UI                    | http://localhost/api/docs                                       |
-| OpenAPI specification         | [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) |
-| Swagger architecture          | [swagger.md](./docs/architecture/swagger.md)                    |
-| Architecture Decision Records | [docs/architecture/README.md](./docs/architecture/README.md)    |
-| Context diagram               | [context.md](./docs/architecture/context.md)                    |
-| Code quality guide            | [quality.md](./docs/quality.md)                                 |
-| Query plan inspector            | [query-plan-inspector.md](./docs/database/query-plan-inspector.md) |
-| Detailed architecture         | [README_ARCHITECTURE.md](./README_ARCHITECTURE.md)              |
+| Документ | Ссылка |
+| -------- | ------ |
+| Индекс документации | [docs/index.md](./docs/index.md) |
+| Журнал изменений | [CHANGELOG.md](./CHANGELOG.md) |
+| Политика безопасности | [SECURITY.md](./SECURITY.md) |
+| Сценарий для собеседования | [walkthrough.md](./docs/interview/walkthrough.md) |
+| Чеклист релиза | [release-checklist.md](./docs/release/release-checklist.md) |
+| Swagger UI | http://localhost/api/docs |
+| OpenAPI | [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) |
+| Swagger (как устроен) | [swagger.md](./docs/architecture/swagger.md) |
+| ADR (оглавление) | [docs/architecture/README.md](./docs/architecture/README.md) |
+| Контекстная диаграмма | [context.md](./docs/architecture/context.md) |
+| Качество кода | [quality.md](./docs/quality.md) |
+| EXPLAIN / планы запросов | [query-plan-inspector.md](./docs/database/query-plan-inspector.md) |
+| Подробная архитектура | [README_ARCHITECTURE.md](./README_ARCHITECTURE.md) |
 
 ---
 
-## Project Goal
+## Цель проекта
 
 LedgerPay предназначен для демонстрации подходов к backend-разработке, в частности:
 

@@ -31,7 +31,7 @@ GET /api/docs                           ← Swagger UI (HTML + JS с CDN)
 |--------|------------|
 | `info` | Название, версия, общее описание |
 | `servers` | Базовый URL (`http://localhost/api/v1`) |
-| `paths` | Эндпоинты: `/auth/login`, `/transactions/deposit`, … |
+| `paths` | Эндпоинты: `/health/live`, `/health/ready` (без Bearer), `/auth/login`, `/transactions/deposit`, … |
 | `components` | Переиспользуемые части: schemas, responses, parameters |
 | `security` | Глобальная auth (у вас — Bearer Sanctum) |
 
@@ -72,7 +72,7 @@ Swagger **не генерируется из PHP-кода** — контролл
 1. Вы открываете `http://localhost/api/docs`.
 2. Laravel отдаёт HTML со Swagger UI.
 3. Swagger UI делает `GET /api/docs/openapi.yaml` и парсит YAML.
-4. UI строит список эндпоинтов по `tags` (Auth, Customers, Accounts, Transactions…).
+4. UI строит список эндпоинтов по `tags` (Health, Auth, Customers, Accounts, Transactions…); для Health авторизация в Swagger не требуется (`security: []`).
 5. Вы нажимаете **Authorize** → вводите `Bearer <token>` из `/auth/login`.
 6. **Try it out** на `POST /transactions/deposit`:
     - Swagger собирает URL: `servers[0].url` + path → `http://localhost/api/v1/transactions/deposit`;

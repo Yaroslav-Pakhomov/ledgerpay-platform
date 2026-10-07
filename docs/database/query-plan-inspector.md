@@ -1,4 +1,4 @@
-# Query Plan Inspector
+# Инспектор планов запросов (EXPLAIN)
 
 Dev-инструмент для просмотра планов выполнения SQL в PostgreSQL.
 
@@ -40,8 +40,8 @@ sail artisan db:explain "SELECT 1" --connection=pgsql
 | **Node types** | Типы узлов плана (Limit, Index Scan, Seq Scan, Sort, …) |
 | **Indexes used** | Имена задействованных индексов (`Index Name` в JSON) |
 | **Seq Scan** | `yes` — есть полное сканирование таблицы; `no` — нет |
-| **Planning time** | Время построения плана (только с `--analyze`) |
-| **Execution time** | Время выполнения (только с `--analyze`) |
+| **Planning time** | Время выполнения запланированнное (только с `--analyze`) |
+| **Execution time** | Время выполнения реальное (только с `--analyze`) |
 
 ### Пример «хорошего» плана
 

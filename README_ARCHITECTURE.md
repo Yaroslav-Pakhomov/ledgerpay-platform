@@ -1,18 +1,23 @@
 # LedgerPay Platform — архитектура
 
-Документ описывает, **как устроен проект**, **какие архитектурные решения приняты** и **почему** они выбраны именно так. Это не API-справка и не onboarding по Laravel — здесь фокус на доменной модели, слоях и инвариантах финансовой системы.
+Документ описывает, **как устроен проект**, **какие архитектурные решения приняты** и **почему** они выбраны именно так. Это не API-справка и не адаптация с помощью Laravel — здесь фокус на доменной модели, слоях и инвариантах финансовой системы.
 
 ## Связанная документация
 
 | Документ | Описание |
 |----------|----------|
 | [README.md](./README.md) | Точка входа: setup, Swagger, curl-примеры |
+| [docs/index.md](./docs/index.md) | Индекс документации |
+| [CHANGELOG.md](./CHANGELOG.md) | Журнал изменений (portfolio release) |
+| [SECURITY.md](./SECURITY.md) | Политика безопасности и "не цели проекта" |
 | [Swagger UI](http://localhost/api/docs) | Интерактивная документация API (нужен запущенный Sail) |
 | [ledgerpay.openapi.yaml](./docs/openapi/ledgerpay.openapi.yaml) | OpenAPI 3.0 spec (исходник контракта v1) |
 | [docs/api-versioning.md](./docs/api-versioning.md) | Версионирование API: `/api/v1`, legacy aliases, заголовки |
-| [docs/architecture/README.md](./docs/architecture/README.md) | ADR и оглавление (001–009) |
+| [docs/architecture/README.md](./docs/architecture/README.md) | ADR и оглавление (001–010) |
+| [adr-010-health-readiness-diagnostics.md](./docs/architecture/adr-010-health-readiness-diagnostics.md) | Работоспособность/Готовность (Liveness/readiness), CLI, страница диагностики |
 | [context.md](./docs/architecture/context.md) | Контекстная диаграмма |
 | [swagger.md](./docs/architecture/swagger.md) | Как устроены OpenAPI и Swagger UI |
+| [interview/walkthrough.md](./docs/interview/walkthrough.md) | Сценарий показа проекта на собеседовании |
 
 > Углублённое описание архитектуры. Для быстрого старта — [README.md](./README.md).
 
@@ -49,7 +54,7 @@
 | Клиент может безопасно повторять запросы | `Idempotency-Key` + уникальный индекс в БД                         |
 | Обработка может быть асинхронной | `ProcessTransactionJob` + очередь `transactions`                   |
 | Внешний API не должен светить внутренние ID | Публичные `uuid`, numeric `id` только внутри БД                    |
-| Операционный audit trail | `audit_logs` + `AuditLogger`, неизменяемый `AuditLog`                 |
+| Журнал аудита операций | `audit_logs` + `AuditLogger`, неизменяемый `AuditLog`                 |
 
 ---
 
@@ -70,6 +75,29 @@
 
 Локальная разработка: **`./vendor/bin/sail up -d`** (PostgreSQL, Redis, app) — основной путь в README. Альтернатива **`composer dev`** (serve + queue + pail + Vite) — без Sail, нужны локальные PostgreSQL и Redis.
 
+### Состояние, готовность и диагностика
+
+Публичные эндпоинты (без Sanctum):
+
+```text
+GET /api/v1/health/live
+GET /api/v1/health/ready
+```
+
+- **live** — работоспособность, процесс приложения отвечает;
+- **ready** — агрегированная готовность: PostgreSQL, Redis, backlog очереди, outbox, неуспешные транзакции (при `failed` checks → HTTP 503).
+
+Операторские инструменты:
+
+```text
+/backoffice/diagnostics
+./vendor/bin/sail artisan diagnostics:run
+```
+
+Laravel `GET /up` — минимальная работоспособность (liveness) на уровне фреймворка; для мониторинга LedgerPay используйте `/api/v1/health/ready`.
+
+Подробнее: [ADR-010](./docs/architecture/adr-010-health-readiness-diagnostics.md).
+
 ---
 
 ## 3. Архитектурный стиль
@@ -78,15 +106,17 @@
 
 ### Три слоя
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │  HTTP (Controllers, Requests, Resources)                │
-│  — валидация входа, сериализация ответа, без логики     │
+│  — валидация входных данных, сериализация ответа,       │
+│    без бизнес-логики                                    │
 └───────────────────────────┬─────────────────────────────┘
                             │ DTO
 ┌───────────────────────────▼─────────────────────────────┐
 │  Application (Services, Jobs, DTO, Results)             │
-│  — orchestration use cases, очереди, координация        │
+│  — оркестрация сценариев использования, очереди,        │
+│    координация                                          │
 └───────────────────────────┬─────────────────────────────┘
                             │ вызовы доменных методов
 ┌───────────────────────────▼─────────────────────────────┐
@@ -97,17 +127,23 @@
 
 ### Почему именно так
 
-**Eloquent-модели в Domain, а не в Infrastructure.**  
-Laravel — это и ORM, и runtime. Вынос моделей в «инфраструктурный» слой с маппингом Domain ↔ DB добавил бы шаблонный код без выигрыша для текущего масштаба. Доменные инварианты (`Account::debit()`, immutability ledger) живут прямо в моделях — это осознанный trade-off: **простота > пуристский DDD**.
+* **Eloquent-модели находятся в Domain, а не в Infrastructure.**
 
-**Application Services вместо Fat Controllers.**  
-Контроллеры (`TransactionController`) только мапят HTTP → DTO → Service → Resource. Сценарии «создать pending-транзакцию и поставить job» и «обработать деньги атомарно» разделены на `TransactionService` и `TransactionProcessorService` — это два разных use case с разной семантикой retry и идемпотентности.
+  Laravel — это одновременно ORM и среда выполнения приложения. Вынос моделей в отдельный инфраструктурный слой с преобразованием `Domain ↔ DB` добавил бы лишний шаблонный код без заметной пользы для текущего масштаба проекта. Доменные инварианты (`Account::debit()`, неизменяемость ledger) реализованы непосредственно в моделях. Это осознанный компромисс: **простота важнее строгого следования DDD**.
 
-**Domain Services только для правил, не привязанных к одной модели.**  
-`TransferPolicy::assertDifferentAccounts()` — пример: правило перевода затрагивает пару счетов, а не один агрегат.
+* **Application Services вместо Fat Controllers.**
 
-**Infrastructure = Laravel primitives.**  
-Jobs, migrations, factories, HTTP — это инфраструктура фреймворка. Отдельный namespace `Infrastructure/` не заводился: нет смысла дублировать то, что Laravel уже даёт из коробки.
+  Контроллеры (`TransactionController`) отвечают только за преобразование HTTP-запроса в DTO, вызов сервиса и формирование ответа через Resource: `HTTP → DTO → Service → Resource`.
+
+  Сценарии «создать pending-транзакцию и поставить задачу в очередь» и «атомарно обработать денежную операцию» разделены между `TransactionService` и `TransactionProcessorService`. Это два разных сценария использования с различной семантикой повторных попыток и идемпотентности.
+
+* **Domain Services используются только для правил, не принадлежащих одной модели.**
+
+  `TransferPolicy::assertDifferentAccounts()` — пример такого правила: оно относится сразу к двум счетам, а не к одной конкретной модели.
+
+* **Infrastructure — это стандартные механизмы Laravel.**
+
+  Jobs, migrations, factories и HTTP-слой уже являются частью инфраструктуры приложения, предоставляемой Laravel. Поэтому отдельный namespace `Infrastructure/` не вводится: нет необходимости дублировать архитектурными абстракциями то, что фреймворк уже предоставляет из коробки.
 
 ---
 
@@ -116,32 +152,36 @@ Jobs, migrations, factories, HTTP — это инфраструктура фре
 ```
 app/
 ├── Domain/
-│   ├── Account/          # Account, AccountStatus, исключения баланса/валюты
-│   ├── Audit/            # AuditLog, AuditAction (append-only операционный журнал)
-│   ├── Customer/         # Customer, CustomerStatus
-│   ├── Ledger/           # LedgerEntry, LedgerDirection
-│   ├── Shared/           # IDomainRuleViolation — маркер доменных ошибок для API
-│   └── Transaction/      # Transaction, TransactionType/Status, TransferPolicy
+│   ├── Account/
+│   ├── Audit/
+│   ├── Customer/
+│   ├── Ledger/
+│   ├── Outbox/
+│   ├── Reconciliation/
+│   ├── Shared/
+│   └── Transaction/      # модели, enums, Events, TransferPolicy
 ├── Application/
-│   ├── Account/          # AccountService, CreateAccountData
-│   ├── Audit/            # AuditLogger — запись audit-событий
-│   ├── Auth/             # AuthService, RegisterCustomerUserData, LoginData
-│   ├── Customer/         # CustomerService
-│   ├── Ledger/           # LedgerService (создание проводок)
+│   ├── Account/
+│   ├── Audit/            # AuditLogger
+│   ├── Auth/
+│   ├── Customer/
+│   ├── Diagnostics/      # readiness checks, DiagnosticsService
+│   ├── Ledger/
+│   ├── Outbox/
+│   ├── Reconciliation/
 │   └── Transaction/      # TransactionService, TransactionProcessorService,
-│                         # ProcessTransactionJob, DTO, TransactionCreationResult
-├── Policies/             # AccountPolicy, TransactionPolicy, CustomerPolicy
-├── Support/Http/         # ProblemDetails (RFC 7807)
+│                         # ProcessTransactionJob, DTO
+├── Policies/
+├── Support/Http/         # ProblemDetails (application/problem+json)
 └── Http/
     ├── Controllers/
-    │   ├── Api/          # REST: base-контроллеры (логика)
-    │   │   └── V1/       # Thin wrappers для стабильного контракта /api/v1/*
-    │   └── Web/          # Inertia UI: dashboard, backoffice
-    ├── Middleware/       # RequestId, ApiRequestLogging, SecurityHeaders,
-    │                     # ApiVersionHeader, DeprecatedApiVersion (legacy), …
-    ├── Requests/         # Form Request validation
-    └── Resources/        # JSON (uuid, minor units)
-        └── V1/           # Aliases публичного контракта v1 (наследуют base)
+    │   ├── Api/
+    │   │   └── V1/       # в т.ч. HealthController (live/ready)
+    │   └── Web/          # Inertia: dashboard, backoffice
+    ├── Middleware/
+    ├── Requests/
+    └── Resources/
+        └── V1/
 ```
 
 Маршруты REST: **`routes/api_v1.php`** (канон, prefix `/api/v1`) + legacy aliases в **`routes/api.php`** под middleware `api.deprecated` (без route names). Имена `route('api.*')` резолвятся в **`/api/v1/...`**.
@@ -166,50 +206,55 @@ Transaction (1) ──< LedgerEntry (N)
      └── target_account (nullable)
 ```
 
-### Customer
+### Клиент (Customer)
 
-- Владелец счетов.
-- Статус `Active` / иные — операции по счетам inactive-клиента блокируются на уровне `AccountService`.
+* Владелец счетов.
+* Статус клиента — `Active` или иной. Операции по счетам неактивного клиента блокируются на уровне `AccountService`.
 
-### Account
+### Счёт (Account)
 
-- Баланс хранится в **minor units** (копейки, центы): `100.50 USD → 10050`.
-- **Почему integer, а не decimal/float:** float даёт ошибки округления; decimal усложняет код; integer — стандарт для payment systems.
-- Методы `credit()` / `debit()` инкапсулируют инварианты:
-  - счёт активен;
-  - валюта операции совпадает с валютой счёта;
-  - при debit — достаточно средств.
-- Исключения домена: `InsufficientFundsException`, `InactiveAccountException`, `CurrencyMismatchException`.
+* Баланс хранится в **минимальных денежных единицах** (копейки, центы): `100.50 USD → 10050`.
+* **Почему integer, а не decimal/float:** `float` приводит к ошибкам округления, `decimal` усложняет работу с денежными значениями, а хранение суммы как целого числа в минимальных денежных единицах — распространённый подход в платёжных системах.
+* Методы `credit()` и `debit()` инкапсулируют доменные инварианты:
 
-### Transaction
+    * счёт активен;
+    * валюта операции совпадает с валютой счёта;
+    * при списании на счёте достаточно средств.
+* Доменные исключения: `InsufficientFundsException`, `InactiveAccountException`, `CurrencyMismatchException`.
 
-- Описывает **намерение** движения денег (deposit / withdrawal / transfer).
-- Жизненный цикл через `TransactionStatus`:
+### Операция (Transaction)
 
-  ```
+* Описывает **намерение провести движение денежных средств**: пополнение (`deposit`), списание (`withdrawal`) или перевод (`transfer`).
+
+* Жизненный цикл определяется через `TransactionStatus`:
+
+  ```text
   Pending → Processing → Completed
-                      ↘ Failed → (retry) → Pending → ...
+                      ↘ Failed → (повторная попытка) → Pending → ...
   ```
 
-- `Cancelled` — зарезервирован в enum, в MVP не выставляется бизнес-логикой.
-- `Pending` создаётся синхронно в HTTP; `Completed` — только после processor + ledger.
-- Публичный идентификатор — `uuid`; `id` — внутренний FK.
+* `Cancelled` зарезервирован в enum, но в MVP не устанавливается бизнес-логикой.
 
-### LedgerEntry
+* `Pending` создаётся синхронно в HTTP-слое; `Completed` устанавливается только после успешной обработки операции и записи в реестр.
 
-- Append-only запись факта движения (Debit / Credit).
-- Хранит `balance_after` — снимок баланса **после** операции для аудита и расследований.
-- Immutability enforced в модели (см. [раздел 8](#8-immutable-ledger-и-audit-log)).
+* Публичный идентификатор — `uuid`; `id` используется как внутренний внешний ключ.
+
+### Реестр операций (LedgerEntry)
+
+* Неизменяемая запись факта движения денежных средств: `Debit` или `Credit`.
+* Хранит `balance_after` — снимок баланса **после** операции, используемый для аудита и расследований.
+* Неизменяемость обеспечивается на уровне модели (см. [раздел 8](#8-immutable-ledger-и-audit-log)).
+
 
 ---
 
 ## 6. Поток обработки денег
 
-Обработка **намеренно разделена на два этапа**: быстрый HTTP-ответ и асинхронное движение денег.
+Обработка **намеренно разделена на два этапа**: быстрый HTTP-ответ и асинхронное выполнение денежной операции.
 
-### Этап 1 — HTTP: создание намерения (sync)
+### Этап 1 — HTTP: создание намерения (синхронно)
 
-```
+```text
 Client POST /api/v1/transactions/deposit
     │
     ▼
@@ -218,56 +263,65 @@ DepositRequest (валидация + Idempotency-Key)
     ▼
 TransactionController → TransactionService::deposit()
     │
-    ├── createTransactionOnce()  → Transaction (Pending)
-    └── dispatchIfNewPending()   → ProcessTransactionJob (только если created=true)
+    ├── createTransactionOnce() → Transaction (Pending)
+    └── dispatchIfNewPending()  → ProcessTransactionJob
+                                 (только если created=true)
     │
     ▼
-HTTP 201 Created (новая транзакция, status: pending)
+HTTP 201 Created
+(новая транзакция, status: pending)
+
     или
-HTTP 200 OK (idempotent replay — тот же uuid, без повторного dispatch)
+
+HTTP 200 OK
+(повтор идемпотентного запроса — тот же uuid,
+без повторной постановки job в очередь)
 ```
 
-Контракт **201 / 200** зафиксирован в [OpenAPI](./docs/openapi/ledgerpay.openapi.yaml) и feature-тестах (`TransactionApiTest`, `TransactionProcessingTest`). Часть тестов по-прежнему вызывает legacy URL `/api/*` — поведение идентично v1.
+Контракт **201 / 200** зафиксирован в [OpenAPI](./docs/openapi/ledgerpay.openapi.yaml) и feature-тестах (`TransactionApiTest`, `TransactionProcessingTest`). Часть тестов по-прежнему использует legacy URL `/api/*`; его поведение идентично API v1.
 
-**Почему async:**  
-HTTP не должен ждать блокировок счетов, retry доменных ошибок и записи в ledger. Клиент получает подтверждение «запрос принят» и может запросом смотреть статус по `uuid`.
+**Почему асинхронно.**
+HTTP-запрос не должен ожидать блокировок счетов, повторных попыток при ошибках и записи в реестр. Клиент сразу получает подтверждение о принятии запроса, а затем может проверять состояние транзакции по `uuid`.
 
-**Почему два сервиса (`TransactionService` vs `TransactionProcessorService`):**
+**Почему используются два сервиса: `TransactionService` и `TransactionProcessorService`.**
 
-| | TransactionService | TransactionProcessorService                           |
-|---|---|-------------------------------------------------------|
-| Когда | HTTP-request | Queue worker                                          |
-| Что делает | Создаёт Pending, dispatch job | Двигает баланс, пишет ledger, ставит Completed/Failed |
-| Идемпотентность | По `idempotency_key` | По `status` + блокировке строки                       |
-| Retry | Не retry'ит сам | Job retry ×5, ручной retry через API                  |
+|                   | `TransactionService`                     | `TransactionProcessorService`                                                     |
+| ----------------- | ---------------------------------------- | --------------------------------------------------------------------------------- |
+| Где выполняется   | HTTP-запрос                              | Обработчик очереди                                                                |
+| Ответственность   | Создаёт `Pending` и ставит job в очередь | Изменяет баланс, записывает данные в ledger, устанавливает `Completed` / `Failed` |
+| Идемпотентность   | По `idempotency_key`                     | По `status` и блокировке строки                                                   |
+| Повторные попытки | Самостоятельно не выполняет              | До 5 попыток job + ручной retry через API                                         |
 
-### Этап 2 — Worker: исполнение (async)
 
-```
+### Этап 2 — Worker: исполнение (асинхронно)
+
+```text
 ProcessTransactionJob
     │
-    ├── WithoutOverlapping (queue-level dedup)
-    ├── skip if Completed / Failed
+    ├── WithoutOverlapping (защита от параллельной обработки в очереди)
+    ├── пропуск, если статус Completed / Failed
     │
     ▼
 TransactionProcessorService::process()
     │
     ├── DB::transaction
     ├── lockTransaction (SELECT ... FOR UPDATE)
-    ├── skip if Completed (defense in depth)
+    ├── пропуск, если статус Completed (defense in depth)
     ├── status → Processing
-    ├── lockAccount(s) — порядок по id (anti-deadlock для transfer)
+    ├── lockAccount(s) — блокировка по id
+    │                    (защита от deadlock при transfer)
     ├── Account::debit/credit + save
     ├── LedgerService::debit/credit
     ├── status → Completed, processed_at
     └── AuditLogger::log(TransactionCompleted | TransactionFailed)
-        (без HTTP context в worker — actor_user_id = null)
+        (в worker нет HTTP-контекста, поэтому actor_user_id = null)
 ```
 
 ### Transfer — особый случай
 
-Перевод блокирует **оба** счёта в стабильном порядке (`ORDER BY id`) — защита от deadlock при встречных переводах A→B и B→A.  
-`TransferPolicy` проверяет, что source ≠ target.
+Перевод блокирует **оба счёта в стабильном порядке по `id`** (`ORDER BY id`). Это снижает риск deadlock при встречных переводах `A → B` и `B → A`.
+
+`TransferPolicy` дополнительно проверяет, что исходный и целевой счеты различаются (`source ≠ target`).
 
 ---
 
@@ -308,7 +362,7 @@ $existing = findByIdempotencyKey($key);
 ### Слой 4 — ProcessTransactionJob
 
 - `WithoutOverlapping('transaction:{id}')` — снижает параллельную обработку одной транзакции на уровне очереди.
-- Early return для `Completed` / `Failed` — простая предварительная проверка перед обработчиком.
+- Ранний возврат для `Completed` / `Failed` — простая предварительная проверка перед обработчиком.
 
 **WithoutOverlapping — вспомогательный**, не главный: authoritative lock — `lockForUpdate` в processor.
 
@@ -319,10 +373,10 @@ $existing = findByIdempotencyKey($key);
 
 ### Retry failed-транзакций
 
-`POST /api/v1/transactions/{uuid}/retry` — явный use case (legacy: `POST /api/transactions/{uuid}/retry`, deprecated):
+`POST /api/v1/transactions/{uuid}/retry` — явный случай использования (legacy: `POST /api/transactions/{uuid}/retry`, deprecated):
 
 1. Только для `Failed`.
-2. Сброс в `Pending`, очистка `failure_reason`.
+2. Сброс в `Pending` (в ожидание), очистка `failure_reason` (причины сбоя).
 3. Новый dispatch job.
 
 **Почему не автоматический бесконечный retry:**  
@@ -332,7 +386,7 @@ $existing = findByIdempotencyKey($key);
 
 ## 8. Immutable Ledger и Audit Log
 
-### LedgerEntry — финансовый журнал
+### LedgerEntry — финансовый журнал, реестр
 
 `LedgerEntry` — **append-only** запись движения денег по счёту.
 
@@ -381,7 +435,7 @@ Request → DTO → Application Service → Resource
 ### DTO (Application layer)
 
 `CreateDepositData`, `CreateWithdrawalData`, `CreateTransferData` — граница между HTTP-форматом и use case.  
-**Почему не массивы:** typed DTO дают контракт для сервиса и PHPStan.
+**Почему не массивы:** тип DTO дают контракт для сервиса и PHPStan.
 
 ### Form Requests
 
@@ -423,7 +477,7 @@ Status/type — string enum values.
 
 ### Ошибки и observability
 
-- **RFC 7807 Problem Details** — ошибки API в `application/problem+json` (`ProblemDetails`, `bootstrap/app.php`).
+- **Problem Details** — ошибки API в `application/problem+json`, стиль RFC 7807 (`ProblemDetails`, `bootstrap/app.php`).
 - **X-Request-Id** — correlation id через `RequestIdMiddleware` (генерируется или пробрасывается клиентом); попадает в логи и `audit_logs.request_id`.
 - **Structured API logging** — `ApiRequestLoggingMiddleware` на API stack (request/response metadata с `request_id`).
 - **X-API-Version** — `ApiVersionHeaderMiddleware` на api stack (`v1` vs `legacy`).
@@ -511,9 +565,9 @@ Factories (`AccountFactory`, `CustomerFactory`, `TransactionFactory`) живут
 ## 11. Качество кода
 
 ```bash
-composer quality     # pint:test + stan + rector:test
-composer ci          # + test:ci (CI gate)
-make ci              # + npm run build
+composer quality     # pint (fix dirty) + stan + rector dry-run + test --coverage
+composer ci          # quality:ci — pint --test + stan + rector + test (CI gate)
+make ci              # Sail: lint + test + npm run build (паритет с Actions)
 composer pint        # fix dirty files
 composer stan        # PHPStan level 6
 composer rector      # apply refactoring
@@ -527,7 +581,7 @@ composer rector      # apply refactoring
 
 ### CI
 
-GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на push/PR в `develop`, `master`, `feature/**` — PostgreSQL 18, явные steps Pint / PHPStan / Rector / Tests, `npm run build`, `php artisan migrate --force`.
+GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на push/PR в `develop`, `master`, `feature/**` — PHP 8.5, Node 22, PostgreSQL 18, Redis 7; `migrate --force`; затем `npm run build`, Pint, PHPStan, Rector dry-run, `php artisan test`.
 
 ---
 
@@ -537,7 +591,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 
 | Не сделано | Что это / зачем | Почему не в проекте |
 |------------|-----------------|---------------------|
-| **Event Sourcing** | История хранится как поток событий, состояние — их проекция; удобно для аудита и replay | Избыточно на текущем масштабе; `ledger_entries` + `audit_logs` уже дают audit trail |
+| **Event Sourcing** | История хранится как поток событий, состояние — их проекция; удобно для аудита и replay (событийное хранение состояния)| Избыточно на текущем масштабе; `ledger_entries` + `audit_logs` уже дают audit trail |
 | **Repository interfaces** | Абстракция доступа к БД поверх ORM; «чистый» DDD | Eloquent достаточно; меньше boilerplate, модели уже в Domain |
 | **CQRS** | Разные модели для записи и чтения (command vs query) | Read-сценарии простые (списки, выписки); усложнение не окупается |
 | **Saga / Outbox** | Outbox — надёжная доставка событий вовне (`transaction.created`, `transaction.completed`, `transaction.failed`, `transaction.retried`); Saga — распределённые транзакции между сервисами | Outbox реализован; типизированные события — ADR-009; Saga — при multi-service |
@@ -570,32 +624,32 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 
 ```
 ┌──────────┐  POST /api/v1/transactions/deposit  ┌───────────────────────┐
-│  Client  │ ────────────────────────────────►│ TransactionController │
-└──────────┘   Idempotency-Key + Bearer token └────────┬──────────────┘
-                                                       │
-                                                       ▼
-                                            ┌───────────────────────┐
-                                            │  TransactionService   │
-                                            │  createTransactionOnce│
-                                            │  dispatchIfNewPending │
-                                            └──────────┬────────────┘
-                                                       │
-                                 ┌─────────────────────┼─────────────────────┐
-                                 ▼                     ▼                     ▼
-                          transactions           jobs table           HTTP 201 / 200
-                          (status: pending)   ProcessTransactionJob
-                                                       │
-                                                       ▼
-                                            ┌────────────────────────────┐
-                                            │ TransactionProcessorService│
-                                            │ lock → credit → ledger     │
-                                            │ status: completed          │
-                                            │ AuditLogger (completed)    │
-                                            └────────────────────────────┘
-                                                       │
-                                 ┌─────────────────────┼─────────────────────┐
-                                 ▼                     ▼                     ▼
-                          accounts.balance+     ledger_entries (credit)   processed_at
+│  Client  │ ───────────────────────────────────►│ TransactionController │
+└──────────┘   Idempotency-Key + Bearer token    └────────┬──────────────┘
+                                                          │
+                                                          ▼
+                                             ┌───────────────────────┐
+                                             │  TransactionService   │
+                                             │  createTransactionOnce│
+                                             │  dispatchIfNewPending │
+                                             └──────────┬────────────┘
+                                                        │
+                                  ┌─────────────────────┼─────────────────────┐
+                                   ▼                    ▼                     ▼
+                            transactions           jobs table           HTTP 201 / 200
+                            (status: pending)   ProcessTransactionJob
+                                                         │
+                                                         ▼
+                                          ┌────────────────────────────┐
+                                          │ TransactionProcessorService│
+                                          │ lock → credit → ledger     │
+                                          │ status: completed          │
+                                          │ AuditLogger (completed)    │
+                                          └────────────────────────────┘
+                                                        │
+                                  ┌─────────────────────┼─────────────────────┐
+                                  ▼                     ▼                     ▼
+                            accounts.balance+     ledger_entries (credit)   processed_at
 ```
 
 ---

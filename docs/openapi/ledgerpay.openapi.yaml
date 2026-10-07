@@ -18,7 +18,10 @@ info:
   title: LedgerPay API
   version: 1.0.0
   description: |
-    Fintech ledger API. Laravel 13, PostgreSQL, Redis Queue, Sanctum.
+    REST API fintech ledger (учёт и движение денег). Laravel 13, PostgreSQL, Redis Queue, Sanctum.
+
+    `info.version` — версия **описания** OpenAPI, не релиз приложения (см. CHANGELOG).
+
     Суммы — в минорных единицах (100.50 RUB = 10050).
 
     POST-транзакции: **201** при создании, **200** при idempotent replay
@@ -27,11 +30,16 @@ info:
     Статусы транзакции: `pending`, `processing`, `completed`, `failed`
     (`cancelled` зарезервирован, в MVP не используется).
 
-    Ошибки возвращаются в формате RFC 7807 Problem Details
-    с полем `request_id` (корреляция с X-Request-Id).
+    Тип операции в JSON: `deposit`, `withdrawal`, `transfer`.
+
+    Ошибки — Problem Details (`application/problem+json`, стиль RFC 7807)
+    с полем `request_id` (корреляция с заголовком `X-Request-Id`, опционально).
 
     Ответы включают заголовок `X-API-Version: v1`.
     Legacy `/api/*` (без v1) — deprecated; см. docs/api-versioning.md.
+
+    Списки (index) — Laravel pagination: `data`, `links`, `meta`.
+    GET `/transactions/{uuid}` — исключение: объект транзакции **в корне** JSON.
 
 servers:
   - url: http://localhost/api/v1
@@ -39,7 +47,19 @@ servers:
   - url: http://localhost:8080/api/v1
     description: Локальная среда (Sail, v1)
 
-# Bearer token (Sanctum) для всех endpoints, кроме register/login
+tags:
+  - name: Health
+    description: Работоспособность и Готовность (Liveness/readiness) (без Bearer token)
+  - name: Auth
+    description: Регистрация, вход, Sanctum token
+  - name: Customers
+    description: Клиенты (в основном backoffice)
+  - name: Accounts
+    description: Счета, баланс, ledger
+  - name: Transactions
+    description: Движение денег и retry
+
+# Bearer token (Sanctum) для всех endpoints, кроме register/login и health
 security:
   - bearerAuth: []
 
@@ -53,6 +73,10 @@ paths:
       responses:
         "200":
           description: Приложение работает
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthLiveResponse"
 
   /health/ready:
     get:
@@ -62,8 +86,16 @@ paths:
       responses:
         "200":
           description: Приложение готово или деградировано (warning)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
         "503":
           description: Приложение не готово (failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthReadyResponse"
 
   # ─── Auth ───────────────────────────────────────────────────────────
   /auth/register:
@@ -71,6 +103,8 @@ paths:
       security: []
       summary: Регистрация клиента
       tags: [Auth]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       requestBody:
         required: true
         content:
@@ -83,14 +117,22 @@ paths:
                 email: { type: string, format: email, example: alice@example.com }
                 password: { type: string, format: password, example: StrongPassword123! }
       responses:
-        "201": { description: Зарегистрирован }
+        "201":
+          description: Зарегистрирован, выдан token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRegisterResponse"
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /auth/login:
     post:
       security: []
       summary: Вход
       tags: [Auth]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       requestBody:
         required: true
         content:
@@ -103,24 +145,44 @@ paths:
                 password: { type: string, format: password }
                 device_name: { type: string, example: cli }
       responses:
-        "200": { description: Токен выдан }
+        "200":
+          description: Токен выдан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /auth/me:
     get:
       summary: Текущий пользователь
       tags: [Auth]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
       responses:
-        "200": { description: OK }
+        "200":
+          description: Профиль пользователя и customer (если есть)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMeResponse"
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /auth/logout:
     post:
       summary: Выход
       tags: [Auth]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Токен отозван
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   # ─── Customers (backoffice) ───────────────────────────────────────
   /customers:
@@ -128,9 +190,15 @@ paths:
       summary: Список клиентов (backoffice)
       tags: [Customers]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Страница клиентов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCustomers"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       summary: Создание клиента (backoffice)
       tags: [Customers]
@@ -145,10 +213,16 @@ paths:
                 name: { type: string }
                 email: { type: string, format: email }
       responses:
-        "201": { description: Создан }
+        "201":
+          description: Создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /customers/{uuid}:
     get:
@@ -156,10 +230,16 @@ paths:
       tags: [Customers]
       parameters: [{ $ref: "#/components/parameters/Uuid" }]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Клиент
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   # ─── Accounts ─────────────────────────────────────────────────────
   /accounts:
@@ -167,8 +247,14 @@ paths:
       summary: Список счетов
       tags: [Accounts]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Страница счетов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedAccounts"
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     post:
       summary: Создание счёта
       tags: [Accounts]
@@ -186,10 +272,16 @@ paths:
                   description: Только для backoffice
                 currency: { type: string, example: RUB }
       responses:
-        "201": { description: Создан }
+        "201":
+          description: Создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /accounts/{uuid}:
     get:
@@ -197,9 +289,15 @@ paths:
       tags: [Accounts]
       parameters: [{ $ref: "#/components/parameters/Uuid" }]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Счёт
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /accounts/{uuid}/balance:
     get:
@@ -207,9 +305,15 @@ paths:
       tags: [Accounts]
       parameters: [{ $ref: "#/components/parameters/Uuid" }]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Баланс в minor units
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountBalanceResponse"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /accounts/{uuid}/ledger:
     get:
@@ -217,9 +321,15 @@ paths:
       tags: [Accounts]
       parameters: [{ $ref: "#/components/parameters/Uuid" }]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Страница проводок ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLedgerEntries"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   # ─── Transactions (money movement + idempotency) ────────────────────
   /transactions:
@@ -227,15 +337,23 @@ paths:
       summary: Список транзакций
       tags: [Transactions]
       responses:
-        "200": { description: OK }
+        "200":
+          description: Страница транзакций
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedTransactions"
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/deposit:
     post:
       summary: Пополнение
-      description: POST 201 — новая pending-тx; 200 — idempotent replay
+      description: POST 201 — новая pending-транзакция; 200 — idempotent replay (тело в `data`).
       tags: [Transactions]
-      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/RequestId"
       requestBody:
         required: true
         content:
@@ -248,19 +366,32 @@ paths:
                 amount: { type: integer, description: Минорные единицы, example: 100000 }
                 currency: { type: string, example: RUB }
       responses:
-        "201": { description: Транзакция создана (pending) }
-        "200": { description: Существующая транзакция (idempotent replay) }
+        "201":
+          description: Транзакция создана (pending)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+        "200":
+          description: Существующая транзакция (idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/DomainRuleViolation" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/withdraw:
     post:
       summary: Списание
-      description: POST 201 — новая pending-тx; 200 — idempotent replay
+      description: POST 201 — новая pending-транзакция; 200 — idempotent replay (тело в `data`).
       tags: [Transactions]
-      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/RequestId"
       requestBody:
         required: true
         content:
@@ -273,19 +404,32 @@ paths:
                 amount: { type: integer, example: 25000 }
                 currency: { type: string, example: RUB }
       responses:
-        "201": { description: Транзакция создана (pending) }
-        "200": { description: Существующая транзакция (idempotent replay) }
+        "201":
+          description: Транзакция создана (pending)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+        "200":
+          description: Существующая транзакция (idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/DomainRuleViolation" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/transfer:
     post:
       summary: Перевод
-      description: POST 201 — новая pending-тx; 200 — idempotent replay
+      description: POST 201 — новая pending-транзакция; 200 — idempotent replay (тело в `data`).
       tags: [Transactions]
-      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/RequestId"
       requestBody:
         required: true
         content:
@@ -299,19 +443,30 @@ paths:
                 amount: { type: integer, example: 10000 }
                 currency: { type: string, example: RUB }
       responses:
-        "201": { description: Транзакция создана (pending) }
-        "200": { description: Существующая транзакция (idempotent replay) }
+        "201":
+          description: Транзакция создана (pending)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
+        "200":
+          description: Существующая транзакция (idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/DomainRuleViolation" }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/{uuid}:
     get:
       summary: Транзакция
       description: |
         Возвращает объект транзакции **в корне JSON** (без обёртки `data`).
-        Список и create-ответы используют обёртку `data`.
+        Список, create и retry используют обёртку `data`.
       tags: [Transactions]
       parameters: [{ $ref: "#/components/parameters/Uuid" }]
       responses:
@@ -323,17 +478,29 @@ paths:
                 $ref: "#/components/schemas/Transaction"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/{uuid}/retry:
     post:
-      summary: Retry failed
+      summary: Повтор failed-транзакции
+      description: |
+        Сбрасывает Failed → Pending и ставит job в очередь.
+        Если статус не `failed`, возвращает **200** с текущей транзакцией (без повторного dispatch).
       tags: [Transactions]
-      parameters: [{ $ref: "#/components/parameters/Uuid" }]
+      parameters:
+        - $ref: "#/components/parameters/Uuid"
+        - $ref: "#/components/parameters/RequestId"
       responses:
-        "200": { description: Retry в очереди }
+        "200":
+          description: Транзакция в очереди или без изменений
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionEnvelope"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
 # ─── Reusable components ──────────────────────────────────────────────
 components:
@@ -355,9 +522,15 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: Обязателен для deposit / withdraw / transfer
+      description: Обязателен для POST /transactions/deposit, /withdraw, /transfer
       schema: { type: string }
       example: deposit-demo-001
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Correlation ID (если не передан — генерируется сервером)
+      schema: { type: string, format: uuid }
 
   responses:
     ValidationError:
@@ -381,24 +554,141 @@ components:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ProblemDetails" }
     DomainRuleViolation:
-      description: HTTP 409 — InsufficientFunds, InactiveAccount и др.
+      description: HTTP 409 — недостаточно средств, неактивный счёт и др. (доменные правила)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/ProblemDetails" }
+    TooManyRequests:
+      description: HTTP 429 — превышен rate limit (auth, API, money movement)
       content:
         application/problem+json:
           schema: { $ref: "#/components/schemas/ProblemDetails" }
 
   schemas:
+    HealthLiveResponse:
+      type: object
+      required: [status, checked_at]
+      properties:
+        status: { type: string, enum: [ok] }
+        checked_at: { type: string, format: date-time }
+
+    HealthReadyResponse:
+      type: object
+      required: [status, checked_at, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, warning, failed]
+          description: warning — деградация, но HTTP 200; failed — HTTP 503
+        checked_at: { type: string, format: date-time }
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiagnosticCheck"
+
+    DiagnosticCheck:
+      type: object
+      properties:
+        name: { type: string, example: database }
+        status: { type: string, enum: [ok, warning, failed] }
+        message: { type: string }
+        context:
+          type: object
+          additionalProperties: true
+
+    AuthUserSummary:
+      type: object
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        is_backoffice: { type: boolean }
+
+    AuthRegisterResponse:
+      type: object
+      properties:
+        token_type: { type: string, example: Bearer }
+        access_token: { type: string }
+        user:
+          type: object
+          properties:
+            name: { type: string }
+            email: { type: string, format: email }
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        token_type: { type: string, example: Bearer }
+        access_token: { type: string }
+        user:
+          $ref: "#/components/schemas/AuthUserSummary"
+
+    AuthMeResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUserSummary"
+        customer:
+          description: null для backoffice-пользователя без customer
+          oneOf:
+            - $ref: "#/components/schemas/Customer"
+            - type: "null"
+
+    MessageResponse:
+      type: object
+      properties:
+        message: { type: string, example: Successfully logged out }
+
+    Customer:
+      type: object
+      properties:
+        uuid: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, example: active }
+        created_at: { type: string, format: date-time, nullable: true }
+
+    Account:
+      type: object
+      properties:
+        uuid: { type: string, format: uuid }
+        customer_uuid: { type: string, format: uuid, nullable: true }
+        currency: { type: string, example: RUB }
+        balance: { type: integer, description: Минорные единицы }
+        status: { type: string, example: active }
+        created_at: { type: string, format: date-time, nullable: true }
+
+    AccountBalanceResponse:
+      type: object
+      properties:
+        account_uuid: { type: string, format: uuid }
+        balance: { type: integer }
+        currency: { type: string }
+
+    LedgerEntry:
+      type: object
+      properties:
+        transaction_uuid: { type: string, format: uuid, nullable: true }
+        account_uuid: { type: string, format: uuid, nullable: true }
+        direction: { type: string, enum: [debit, credit] }
+        amount: { type: integer }
+        currency: { type: string }
+        balance_after: { type: integer }
+        created_at: { type: string, format: date-time }
+
     Transaction:
       description: Формат GET /transactions/{uuid} (объект в корне JSON)
       type: object
       properties:
         uuid: { type: string, format: uuid }
-        type: { type: string, enum: [deposit, withdraw, transfer] }
+        type: { type: string, enum: [deposit, withdrawal, transfer] }
         status:
           type: string
           enum: [pending, processing, completed, failed, cancelled]
           description: |
             pending — ожидает worker; processing — в обработке;
-            completed / failed — терминальные; cancelled — зарезервирован (не используется в MVP).
+            completed / failed — терминальные; cancelled — зарезервирован (MVP не использует).
         source_account_uuid: { type: string, format: uuid, nullable: true }
         target_account_uuid: { type: string, format: uuid, nullable: true }
         amount: { type: integer, description: Минорные единицы }
@@ -406,6 +696,94 @@ components:
         failure_reason: { type: string, nullable: true }
         processed_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+
+    TransactionEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Transaction"
+
+    CustomerEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Customer"
+
+    AccountEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/Account"
+
+    PaginationLinks:
+      type: object
+      properties:
+        first: { type: string, nullable: true }
+        last: { type: string, nullable: true }
+        prev: { type: string, nullable: true }
+        next: { type: string, nullable: true }
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        from: { type: integer, nullable: true }
+        last_page: { type: integer }
+        path: { type: string }
+        per_page: { type: integer }
+        to: { type: integer, nullable: true }
+        total: { type: integer }
+
+    PaginatedCustomers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedAccounts:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedTransactions:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginatedLedgerEntries:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+        links:
+          $ref: "#/components/schemas/PaginationLinks"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     ProblemDetails:
       description: RFC 7807 Problem Details + request_id для трассировки

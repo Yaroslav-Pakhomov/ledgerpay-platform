@@ -10,14 +10,14 @@
 
 Баги, скрипты, неудачные деплои или прямой SQL-доступ могут обойти Laravel models и services.
 
-[ADR-002](./adr-002-immutable-ledger.md) уже фиксирует immutability ledger на уровне Eloquent; ADR-005 добавляет **database-level** enforcement.
+[ADR-002](./adr-002-immutable-ledger.md) уже фиксирует неизменности реестра на уровне Eloquent; ADR-005 добавляет **database-level** enforcement.
 
 ## Решение
 
 Критичные инварианты "силового/прямого" запроса в PostgreSQL:
 
 - баланс счёта не может быть отрицательным;
-- сумма транзакции и ledger-записи — строго положительная;
+- сумма транзакции и реестр-записи — строго положительная;
 - код валюты — uppercase, 3 символа (ISO 4217);
 - форма счетов транзакции соответствует типу (deposit / withdrawal / transfer);
 - записи `ledger_entries` неизменяемы (UPDATE/DELETE блокируются триггером);
@@ -39,7 +39,7 @@
 
 - миграции PostgreSQL-specific (не SQLite);
 - тесты должны выполняться на PostgreSQL;
-- при добавлении constraints нужен careful migration ordering на существующих данных;
+- при добавлении ограничений (constraints) нужен безопасный порядок миграции на существующих данных;
 - двойная защита (Eloquent + DB) — два типа исключений в тестах.
 
 ## Индексы производительности

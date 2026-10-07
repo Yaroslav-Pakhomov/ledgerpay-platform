@@ -1,4 +1,4 @@
-# ADR-006: Outbox Pattern
+# ADR-006: Outbox (исходящие события)
 
 ## Статус
 
@@ -14,17 +14,17 @@
 
 Доменные события сначала сохраняются в таблице `outbox_messages` в той же DB-транзакции, что и бизнес-изменение.
 
-Scheduled command `outbox:dispatch-pending` ставит pending/failed записи в очередь `outbox`.
+Команда планировщика (scheduled command) `outbox:dispatch-pending` ставит pending/failed записи в очередь `outbox`.
 
 Queue job публикует сообщение (structured log + опционально Kafka/Redpanda) и помечает его как `published`.
 
 События: `transaction.created`, `transaction.completed`, `transaction.failed`, `transaction.retried`.
 
 Жизненный цикл:
-- transaction.created     → Pending заведена (HTTP)
-- transaction.completed   → деньги двинулись (worker OK)
-- transaction.failed    → терминальный сбой после retry (worker failed)
-- transaction.retried   → Failed → Pending (ручной retry)
+- transaction.created   → Pending заведена (HTTP)
+- transaction.completed → деньги двинулись (worker OK)
+- transaction.failed    → терминальный сбой после повтора (worker failed)
+- transaction.retried   → Failed → Pending (ручной повтор)
 
 Типизированные события и mapper: [ADR-009](./adr-009-typed-domain-events.md).
 
@@ -49,6 +49,6 @@ Transport layer:
 Минусы:
 
 - дополнительная таблица и workers;
-- eventual publication (не мгновенная);
-- consumers должны быть idempotent (at-least-once delivery);
+- возможная публикация (не мгновенная);
+- потребители (consumers) должны быть идемпотентными (idempotent) (at-least-once delivery);
 - локальная разработка с Kafka требует Redpanda в Docker.

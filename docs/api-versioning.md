@@ -1,4 +1,4 @@
-# API Versioning
+# Версионирование API
 
 Стабильный публичный контракт LedgerPay:
 
@@ -30,6 +30,17 @@ Link: </api/v1>; rel="successor-version"
 - JSON-форма ответов v1 (`App\Http\Resources\V1\*`) считается публичным контрактом.
 - Breaking changes в теле ответа — новая версия API (`/api/v2`, …).
 - Обратно совместимые добавления полей допустимы в текущей v1.
+
+## Публичные эндпоинты без аутентификации
+
+Health checks не требуют Bearer token:
+
+```text
+GET /api/v1/health/live
+GET /api/v1/health/ready
+```
+
+Они относятся к стабильному префиксу `/api/v1` и не дублируются в legacy `/api/*`.
 
 ## Пример
 
