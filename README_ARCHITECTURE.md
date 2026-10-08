@@ -371,6 +371,8 @@ $existing = findByIdempotencyKey($key);
 - `lockTransaction()` + проверка `Completed` внутри DB-транзакции.
 - `lockAccount()` — консистентность баланса при конкурентных операциях по одному счёту.
 
+Сценарии гонок (несколько PHP-процессов, отдельные сессии PostgreSQL) проверяются в `tests/Concurrency/` — см. [README: тесты конкурентности](./README.md#тесты-конкурентности-postgresql).
+
 ### Retry failed-транзакций
 
 `POST /api/v1/transactions/{uuid}/retry` — явный случай использования (legacy: `POST /api/transactions/{uuid}/retry`, deprecated):
@@ -548,6 +550,8 @@ Feature-тесты сгруппированы по контрактам:
 | **Errors & correlation** | `Api/ApiErrorHandlingTest` | Problem Details, `X-Request-Id` |
 | **Audit** | `AuditLogTest` | Immutable audit + события из HTTP/worker |
 | **Docs** | `ApiDocsTest` | Swagger UI и OpenAPI spec (local guards) |
+| **Усиление PostgreSQL** | `DatabaseHardeningTest` | CHECK, триггеры неизменяемости, RESTRICT — инварианты при прямом SQL |
+| **Конкурентность (несколько процессов)** | `tests/Concurrency/TransactionConcurrencyTest`, `ConcurrencyTestWorkers` | `Concurrency::run()`, `lockForUpdate`, встречные переводы, гонка идемпотентности, двойная обработка; `$connectionsToTransact = []` |
 
 **Почему `Queue::fake()` в orchestration-тестах:**  
 Изолирует «создание + dispatch» от «движение денег». Processor тестируется отдельно через прямой вызов `handle()`.

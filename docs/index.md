@@ -6,7 +6,7 @@
 - [Журнал изменений (CHANGELOG)](../CHANGELOG.md)
 - [Политика безопасности](../SECURITY.md)
 - [Подробная архитектура](../README_ARCHITECTURE.md)
-- [Quality gates (качество кода)](quality.md)
+- [Quality gates (качество кода)](quality.md) — в т.ч. [тесты конкурентности](../README.md#тесты-конкурентности-postgresql)
 - [Версионирование API](api-versioning.md)
 - [Оглавление ADR](architecture/README.md)
 

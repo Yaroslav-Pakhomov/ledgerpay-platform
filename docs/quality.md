@@ -49,6 +49,17 @@ composer test        # php artisan test --coverage (медленнее)
 composer test:ci     # без coverage; так же в CI
 ```
 
+## Тесты конкурентности (PostgreSQL)
+
+Каталог `tests/Concurrency/`. Требуется `DB_CONNECTION=pgsql` (на SQLite тесты пропускаются). В CI выполняются вместе с полным `php artisan test`.
+
+```bash
+./vendor/bin/sail artisan test --testsuite=Concurrency
+./vendor/bin/sail artisan test --group=concurrency
+```
+
+Подробнее: [README § тесты конкурентности](../README.md#тесты-конкурентности-postgresql).
+
 ## Полная проверка (паритет с CI)
 
 **Sail (рекомендуется):**

@@ -90,7 +90,7 @@ LedgerPay — backend-система для работы с клиентами, 
 ### Quality & Infrastructure
 
 * Docker / Laravel Sail
-* PHPUnit / Feature Tests
+* PHPUnit (Unit, Feature, Concurrency)
 * PHPStan / Larastan
 * Rector
 * Laravel Pint
@@ -291,6 +291,8 @@ Request 2: Account B → Account A
 ```
 
 Основным механизмом обеспечения консистентности являются ограничения и блокировки на уровне БД, а не только проверки в PHP-коде.
+
+Автопроверка сценариев гонок — [тесты конкурентности (PostgreSQL)](#тесты-конкурентности-postgresql).
 
 ---
 
@@ -587,7 +589,8 @@ Audit Event
 * создание транзакций (transaction creation);
 * валидация (validation);
 * идемпотентность (idempotency);
-* неизменяемость реестра операций (ledger immutability).
+* неизменяемость реестра операций (ledger immutability);
+* ограничения PostgreSQL (CHECK, триггеры) — `DatabaseHardeningTest`.
 
 **Асинхронная обработка:**
 
@@ -608,6 +611,22 @@ Audit Event
 ```bash
 ./vendor/bin/sail artisan test
 ```
+
+### Тесты конкурентности (PostgreSQL)
+
+Отдельный набор тестов проверяет гонки данных в **нескольких PHP-процессах** (`Illuminate\Support\Facades\Concurrency`). Покрываются параллельные списания, встречные переводы, гонки по ключу идемпотентности и повторная обработка одной транзакции в статусе `Pending`.
+
+Фикстуры коммитятся в БД (`$connectionsToTransact = []`), иначе дочерние процессы не видят данные PHPUnit-транзакции. HTTP и нагрузочное тестирование в этот набор не входят.
+
+* Каталог: `tests/Concurrency/`
+* Требуется **PostgreSQL** (`DB_CONNECTION=pgsql`); при использовании SQLite тесты пропускаются.
+* В CI (GitHub Actions) этот набор выполняется вместе с остальными тестами через `php artisan test`.
+
+```bash
+./vendor/bin/sail artisan test --testsuite=Concurrency
+./vendor/bin/sail artisan test --group=concurrency
+```
+
 
 ---
 
@@ -673,7 +692,7 @@ PHPStan
         ↓
 Rector dry-run
         ↓
-PHPUnit / Feature Tests
+PHPUnit (Unit + Feature + Concurrency)
 ```
 
 Таким образом изменения автоматически проверяются на:
@@ -1035,7 +1054,6 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 - **Metrics** — сбор технических и бизнес-метрик системы.
 - **Distributed tracing** — трассировка запросов через API, очередь и worker.
 - **Load tests** — проверка системы под высокой нагрузкой.
-- **Concurrency tests** — проверка корректности конкурентных операций и блокировок.
 - публичный маршрут показа — [сценарий для собеседования](./docs/interview/walkthrough.md).
 
 ---

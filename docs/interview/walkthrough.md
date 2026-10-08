@@ -153,17 +153,19 @@ app/Http
 
 Открыть:
 
-`tests/Feature`
+`tests/Feature` и `tests/Concurrency`
 
 Выделить:
 
 - deposit, withdrawal, transfer — `TransactionProcessingTest`
 - недостаточно средств, idempotency — там же
 - неизменяемый ledger — `LedgerImmutabilityTest`
+- ограничения PostgreSQL — `DatabaseHardeningTest`
 - авторизация — `BackofficeAccessTest`
 - outbox — `OutboxPatternTest`
 - сверка — `ReconciliationTest`
 - диагностика — `DiagnosticsTest`
+- **конкурентность (несколько PHP-процессов, PostgreSQL)** — `tests/Concurrency/TransactionConcurrencyTest`: параллельные списания, встречные переводы, гонка ключа идемпотентности
 
 ## Завершение (рекомендуемая формулировка)
 
