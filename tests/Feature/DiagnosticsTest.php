@@ -103,6 +103,6 @@ final class DiagnosticsTest extends TestCase
 
     public function test_diagnostics_command_runs(): void
     {
-        $this->artisan('diagnostics:run')->assertSuccessful();
+        $this->runArtisanSuccessfully('diagnostics:run');
     }
 }

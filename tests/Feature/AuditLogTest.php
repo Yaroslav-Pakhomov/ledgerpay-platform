@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
@@ -25,7 +25,7 @@ use Tests\TestCase;
 /**
  * Feature-тесты immutable audit log.
  *
- * AuditLog — append-only журнал ({@see AuditLogger}):
+ * AuditLog — append-only журнал ({@see AuditLoggerService}):
  * фиксирует кто, что и над какой сущностью сделал. Модель запрещает
  * update/delete ({@see AuditLog::booted()}).
  *

@@ -31,9 +31,7 @@ final class AccountService
 {
     public function create(CreateAccountData $data): Account
     {
-        $customer = Customer::query()
-            ->where('uuid', $data->customerUuid)
-            ->firstOrFail();
+        $customer = Customer::query()->where('uuid', $data->customerUuid)->firstOrFail();
 
         if (!$customer->isActive()) {
             throw new InactiveCustomerException;

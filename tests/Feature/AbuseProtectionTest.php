@@ -85,8 +85,7 @@ final class AbuseProtectionTest extends TestCase
             'processed_at'           => now(),
         ]);
 
-        $this->artisan('idempotency:prune-expired')
-            ->assertSuccessful();
+        $this->runArtisanSuccessfully('idempotency:prune-expired');
 
         $transaction->refresh();
 

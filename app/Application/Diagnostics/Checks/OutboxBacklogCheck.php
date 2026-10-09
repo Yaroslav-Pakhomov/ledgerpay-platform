@@ -19,17 +19,11 @@ final class OutboxBacklogCheck implements IDiagnosticCheck
     public function run(): DiagnosticCheckResult
     {
         try {
-            $pending = OutboxMessage::query()
-                ->where('status', OutboxStatus::Pending)
-                ->count();
+            $pending = OutboxMessage::query()->where('status', OutboxStatus::Pending)->count();
 
-            $failed = OutboxMessage::query()
-                ->where('status', OutboxStatus::Failed)
-                ->count();
+            $failed = OutboxMessage::query()->where('status', OutboxStatus::Failed)->count();
 
-            $status = $failed > 0 || $pending > 500
-                ? 'warning'
-                : 'ok';
+            $status = $failed > 0 || $pending > 500 ? 'warning' : 'ok';
 
             return new DiagnosticCheckResult(
                 name: 'outbox_backlog',

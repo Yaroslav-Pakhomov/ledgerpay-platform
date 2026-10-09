@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Transaction\Services;
 
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
@@ -23,7 +23,7 @@ use Throwable;
  * Application Service для создания и постановки транзакций в очередь.
  *
  * HTTP-слой создает транзакцию в статусе Pending, записывает outbox-событие
- * {@see TransactionCreated} через {@see OutboxWriter::recordEvent()}
+ * {@see TransactionCreated} через {@see OutboxWriterService::recordEvent()}
  * (в той же DB-транзакции) и dispatch'ит {@see ProcessTransactionJob}.
  *
  * Ручной retry эмитит {@see TransactionRetried} при переводе Failed → Pending.
@@ -33,7 +33,7 @@ use Throwable;
 final readonly class TransactionService
 {
     public function __construct(
-        private OutboxWriter $outboxWriter,
+        private OutboxWriterService $outboxWriter,
     ) {}
 
     /**
@@ -55,9 +55,7 @@ final readonly class TransactionService
             /**
              * Получаем агрегат счета по его публичному идентификатору.
              */
-            $target = Account::query()
-                ->where('uuid', $data->targetAccountUuid)
-                ->firstOrFail();
+            $target = Account::query()->where('uuid', $data->targetAccountUuid)->firstOrFail();
 
             return Transaction::query()->create([
                 'type'                   => TransactionType::Deposit,
@@ -71,17 +69,11 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce(
-            $data->idempotencyKey,
-            $callbackTransaction
-        );
+        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
 
         $this->dispatchIfNewPending($result);
 
-        return new TransactionCreationResult(
-            transaction: $result->transaction->refresh(),
-            created: $result->created,
-        );
+        return new TransactionCreationResult(transaction: $result->transaction->refresh(), created: $result->created);
     }
 
     /**
@@ -103,9 +95,7 @@ final readonly class TransactionService
             /**
              * Получаем агрегат счета-источника по публичному UUID.
              */
-            $source = Account::query()
-                ->where('uuid', $data->sourceAccountUuid)
-                ->firstOrFail();
+            $source = Account::query()->where('uuid', $data->sourceAccountUuid)->firstOrFail();
 
             return Transaction::query()->create([
                 'type'                   => TransactionType::Withdrawal,
@@ -119,10 +109,7 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce(
-            $data->idempotencyKey,
-            $callbackTransaction
-        );
+        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
 
         $this->dispatchIfNewPending($result);
 
@@ -152,13 +139,9 @@ final readonly class TransactionService
              * Получаем агрегаты обоих счетов,
              * участвующих в переводе.
              */
-            $source = Account::query()
-                ->where('uuid', $data->sourceAccountUuid)
-                ->firstOrFail();
+            $source = Account::query()->where('uuid', $data->sourceAccountUuid)->firstOrFail();
 
-            $target = Account::query()
-                ->where('uuid', $data->targetAccountUuid)
-                ->firstOrFail();
+            $target = Account::query()->where('uuid', $data->targetAccountUuid)->firstOrFail();
 
             return Transaction::query()->create([
                 'type'                   => TransactionType::Transfer,
@@ -172,10 +155,7 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce(
-            $data->idempotencyKey,
-            $callbackTransaction
-        );
+        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
 
         $this->dispatchIfNewPending($result);
 
@@ -199,9 +179,7 @@ final readonly class TransactionService
      */
     public function retry(string $transactionUuid): Transaction
     {
-        $transaction = Transaction::query()
-            ->where('uuid', $transactionUuid)
-            ->firstOrFail();
+        $transaction = Transaction::query()->where('uuid', $transactionUuid)->firstOrFail();
 
         if ($transaction->status !== TransactionStatus::Failed) {
             return $transaction;
@@ -259,10 +237,7 @@ final readonly class TransactionService
              * Вместе с unique index на idempotency_key гарантирует,
              * что будет создан ровно один агрегат Transaction.
              */
-            $existing = Transaction::query()
-                ->where('idempotency_key', $idempotencyKey)
-                ->lockForUpdate()
-                ->first();
+            $existing = Transaction::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
 
             if ($existing instanceof Transaction) {
                 return new TransactionCreationResult(
@@ -314,8 +289,6 @@ final readonly class TransactionService
      */
     private function findByIdempotencyKey(string $idempotencyKey): ?Transaction
     {
-        return Transaction::query()
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
+        return Transaction::query()->where('idempotency_key', $idempotencyKey)->first();
     }
 }

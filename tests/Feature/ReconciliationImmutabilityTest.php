@@ -9,6 +9,7 @@ use App\Domain\Account\Models\Account;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use LogicException;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Feature-тесты доменного инварианта immutable reconciliation reports.
@@ -21,6 +22,9 @@ final class ReconciliationImmutabilityTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @throws Throwable
+     */
     public function test_reconciliation_report_cannot_be_updated(): void
     {
         $account = Account::factory()
@@ -32,11 +36,13 @@ final class ReconciliationImmutabilityTest extends TestCase
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('Отчёты сверки являются неизменяемыми.');
 
-        $report->update([
-            'difference' => 999,
-        ]);
+        $report->forceFill(['difference' => 999]);
+        $report->save();
     }
 
+    /**
+     * @throws Throwable
+     */
     public function test_reconciliation_report_cannot_be_deleted(): void
     {
         $account = Account::factory()
@@ -45,9 +51,10 @@ final class ReconciliationImmutabilityTest extends TestCase
 
         $report = app(ReconciliationService::class)->checkAccount($account);
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('Отчёты сверки являются неизменяемыми.');
-
-        $report->delete();
+        $this->assertThrows(
+            fn () => $report->delete(),
+            LogicException::class,
+            'Отчёты сверки являются неизменяемыми.',
+        );
     }
 }

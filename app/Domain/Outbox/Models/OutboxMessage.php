@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Outbox\Models;
 
 use App\Application\Outbox\Jobs\PublishOutboxMessageJob;
-use App\Application\Outbox\Services\OutboxPublisher;
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxPublisherService;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Console\Commands\DispatchPendingOutboxMessagesCommand;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Shared\Events\IDomainEvent;
@@ -20,13 +20,13 @@ use Override;
 /**
  * Запись transactional outbox для надёжной публикации доменных событий.
  *
- * Создаётся через {@see OutboxWriter::recordEvent()} (типизированное {@see IDomainEvent})
+ * Создаётся через {@see OutboxWriterService::recordEvent()} (типизированное {@see IDomainEvent})
  * в той же DB-транзакции, что и бизнес-изменение (например {@see Transaction}).
  *
  * Публикация выполняется асинхронно:
  * {@see DispatchPendingOutboxMessagesCommand}
  * → {@see PublishOutboxMessageJob}
- * → {@see OutboxPublisher}.
+ * → {@see OutboxPublisherService}.
  *
  * @property int                       $id
  * @property string                    $uuid           Публичный идентификатор outbox-записи

@@ -8,6 +8,7 @@ use App\Application\Reconciliation\Services\ReconciliationService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Reconciliation\Enums\ReconciliationStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -91,6 +92,18 @@ final class ReconciliationReport extends Model
     public function uniqueIds(): array
     {
         return ['uuid'];
+    }
+
+    #[Override]
+    protected function performUpdate(Builder $query): bool
+    {
+        throw new LogicException('Отчёты сверки являются неизменяемыми.');
+    }
+
+    #[Override]
+    protected function performDeleteOnModel(): void
+    {
+        throw new LogicException('Отчёты сверки являются неизменяемыми.');
     }
 
     /**

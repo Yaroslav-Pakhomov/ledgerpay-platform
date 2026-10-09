@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\Auth\DTO\RegisterCustomerUserData;
 use App\Application\Auth\Services\AuthService;
 use App\Domain\Audit\Enums\AuditAction;
@@ -25,10 +25,10 @@ use Throwable;
 final class AuthController extends Controller
 {
     /**
-     * @param AuditLogger $audit Сервис записи audit-событий
+     * @param AuditLoggerService $audit Сервис записи audit-событий
      */
     public function __construct(
-        private readonly AuditLogger $audit,
+        private readonly AuditLoggerService $audit,
     ) {}
 
     /**

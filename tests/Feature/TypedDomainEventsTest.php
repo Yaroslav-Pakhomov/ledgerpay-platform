@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Outbox\Mappers\DomainEventToOutboxMessageMapper;
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Account\Models\Account;
 use App\Domain\Outbox\Models\OutboxMessage;
@@ -22,7 +22,7 @@ use Tests\TestCase;
  * Feature-тесты типизированных доменных событий и преобразователя outbox.
  *
  * Проверяют контракт {@see IDomainEvent} → {@see DomainEventToOutboxMessageMapper}
- * → {@see OutboxWriter::recordEvent()} для {@see TransactionCreated}:
+ * → {@see OutboxWriterService::recordEvent()} для {@see TransactionCreated}:
  *
  * - структура тела события (payload);
  * - преобразование в структуру строки outbox;
@@ -93,7 +93,7 @@ final class TypedDomainEventsTest extends TestCase
         $this->assertSame('deposit', $mapped['payload']['type']);
     }
 
-    /** {@see OutboxWriter::recordEvent()} сохраняет типизированное событие в БД. */
+    /** {@see OutboxWriterService::recordEvent()} сохраняет типизированное событие в БД. */
     public function test_outbox_writer_records_typed_event(): void
     {
         $account = Account::factory()->create();
@@ -109,7 +109,7 @@ final class TypedDomainEventsTest extends TestCase
             'idempotency_expires_at' => now()->addDay(),
         ]);
 
-        app(OutboxWriter::class)->recordEvent(
+        app(OutboxWriterService::class)->recordEvent(
             new TransactionCreated($transaction)
         );
 
@@ -145,6 +145,6 @@ final class TypedDomainEventsTest extends TestCase
 
         $this->assertSame('transaction.failed', $event->eventName());
         $this->assertSame('Insufficient funds', $event->payload()['failure_reason']);
-        $this->assertSame(InsufficientFundsException::class, $event->payload()['exception_class']);
+        $this->assertSame(InsufficientFundsException::class, $event->payload()['exception_class'] ?? null);
     }
 }

@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Application\Account\DTO\CreateAccountData;
 use App\Application\Account\Services\AccountService;
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Customer\Exceptions\InactiveCustomerException;
@@ -14,6 +14,7 @@ use App\Domain\Customer\Models\Customer;
 use App\Domain\Ledger\Models\LedgerEntry;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreAccountRequest;
+use App\Http\Resources\Account\AccountResource;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
@@ -27,10 +28,10 @@ use Inertia\Response;
 final class AccountController extends Controller
 {
     /**
-     * @param AuditLogger $audit Сервис записи audit-событий
+     * @param AuditLoggerService $audit Сервис записи audit-событий
      */
     public function __construct(
-        private readonly AuditLogger $audit,
+        private readonly AuditLoggerService $audit,
     ) {}
 
     /**
@@ -58,10 +59,7 @@ final class AccountController extends Controller
         $customer = $user->isBackOffice() ? Customer::query()->where('uuid', $validated['customer_uuid'])->firstOrFail() : $user->customer;
 
         $account = $accountService->create(
-            new CreateAccountData(
-                $customer->uuid,
-                $validated['currency'],
-            )
+            new CreateAccountData($customer->uuid, $validated['currency'])
         );
 
         $this->audit->log(
@@ -93,12 +91,7 @@ final class AccountController extends Controller
         $this->authorize('view', $account);
 
         return inertia('Dashboard/Ledger', [
-            'account' => [
-                'uuid'     => $account->uuid,
-                'currency' => $account->currency,
-                'balance'  => $account->balance,
-                'status'   => $account->status->value,
-            ],
+            'account' => AccountResource::make($account)->resolve(),
             'entries' => $account->ledgerEntries()
                 ->with('transaction')
                 ->latest()

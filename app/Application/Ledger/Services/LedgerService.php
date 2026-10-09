@@ -25,11 +25,8 @@ final class LedgerService
     /**
      * Создает запись о списании средств со счета.
      */
-    public function debit(
-        Transaction $transaction,
-        Account $account,
-        int $amount,
-    ): LedgerEntry {
+    public function debit(Transaction $transaction, Account $account, int $amount): LedgerEntry
+    {
         return LedgerEntry::query()->create([
             'transaction_id' => $transaction->id,
             'account_id'     => $account->id,
@@ -43,11 +40,8 @@ final class LedgerService
     /**
      * Создает запись о зачислении средств на счет.
      */
-    public function credit(
-        Transaction $transaction,
-        Account $account,
-        int $amount,
-    ): LedgerEntry {
+    public function credit(Transaction $transaction, Account $account, int $amount): LedgerEntry
+    {
         return LedgerEntry::query()->create([
             'transaction_id' => $transaction->id,
             'account_id'     => $account->id,

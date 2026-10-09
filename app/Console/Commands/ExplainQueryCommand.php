@@ -8,6 +8,7 @@ use App\Support\Database\QueryPlanInspector;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use JsonException;
 use Throwable;
 
 /**
@@ -21,6 +22,9 @@ use Throwable;
             {--json : Вывести сырой JSON-план}')]
 final class ExplainQueryCommand extends Command
 {
+    /**
+     * @throws JsonException
+     */
     public function handle(): int
     {
         if (!app()->environment(['local', 'testing'])) {
@@ -51,7 +55,7 @@ final class ExplainQueryCommand extends Command
         }
 
         if ($this->option('json')) {
-            $this->line(json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            $this->line(json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 
             return self::SUCCESS;
         }

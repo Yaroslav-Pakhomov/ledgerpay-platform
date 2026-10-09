@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Transaction\Services;
 
 use App\Application\Ledger\Services\LedgerService;
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
@@ -44,7 +44,7 @@ final readonly class TransactionProcessorService
     public function __construct(
         private LedgerService $ledger,
         private TransferPolicy $transferPolicy,
-        private OutboxWriter $outboxWriter,
+        private OutboxWriterService $outboxWriter,
     ) {}
 
     /**

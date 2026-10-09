@@ -34,18 +34,12 @@ final class RunReconciliationCommand extends Command
 
         $reports = $service->checkAllAccounts($limit);
 
-        $matched = $reports
-            ->filter(fn ($report) => $report->status === ReconciliationStatus::Matched)
-            ->count();
+        $matched = $reports->filter(fn ($report) => $report->status === ReconciliationStatus::Matched)->count();
 
-        $mismatched = $reports
-            ->filter(fn ($report) => $report->status === ReconciliationStatus::Mismatched)
-            ->count();
+        $mismatched = $reports->filter(fn ($report) => $report->status === ReconciliationStatus::Mismatched)->count();
 
         $this->info("Сверка завершена. Совпадает: {$matched}. Расхождение: {$mismatched}.");
 
-        return $mismatched > 0
-            ? self::FAILURE
-            : self::SUCCESS;
+        return $mismatched > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web;
 
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
@@ -48,10 +48,10 @@ use Throwable;
 final class TransactionController extends Controller
 {
     /**
-     * @param AuditLogger $audit Сервис записи audit-событий
+     * @param AuditLoggerService $audit Сервис записи audit-событий
      */
     public function __construct(
-        private readonly AuditLogger $audit,
+        private readonly AuditLoggerService $audit,
     ) {}
 
     /**
@@ -80,12 +80,7 @@ final class TransactionController extends Controller
         $this->authorize('create', Transaction::class);
 
         $result = $transactionService->deposit(
-            new CreateDepositData(
-                $validated['target_account_uuid'],
-                $validated['amount'],
-                $validated['currency'],
-                $request->idempotencyKey(),
-            )
+            new CreateDepositData($validated['target_account_uuid'], $validated['amount'], $validated['currency'], $request->idempotencyKey())
         );
 
         $this->auditQueuedIfCreated($result, $request);
@@ -119,12 +114,7 @@ final class TransactionController extends Controller
         $this->authorize('create', Transaction::class);
 
         $result = $transactionService->withdraw(
-            new CreateWithdrawalData(
-                $validated['source_account_uuid'],
-                $validated['amount'],
-                $validated['currency'],
-                $request->idempotencyKey(),
-            )
+            new CreateWithdrawalData($validated['source_account_uuid'], $validated['amount'], $validated['currency'], $request->idempotencyKey())
         );
 
         $this->auditQueuedIfCreated($result, $request);
@@ -161,13 +151,7 @@ final class TransactionController extends Controller
         $this->authorize('create', Transaction::class);
 
         $result = $transactionService->transfer(
-            new CreateTransferData(
-                $validated['source_account_uuid'],
-                $validated['target_account_uuid'],
-                $validated['amount'],
-                $validated['currency'],
-                $request->idempotencyKey(),
-            )
+            new CreateTransferData($validated['source_account_uuid'], $validated['target_account_uuid'], $validated['amount'], $validated['currency'], $request->idempotencyKey())
         );
 
         $this->auditQueuedIfCreated($result, $request);
@@ -185,15 +169,12 @@ final class TransactionController extends Controller
      * @param  TransactionService $transactionService Сервис повторной постановки транзакции в очередь
      * @return RedirectResponse   Redirect back с flash-сообщением об успехе
      *
-     * @throws ModelNotFoundException если транзакция не найдена
-     * @throws AuthorizationException при отсутствии права retry
+     * @throws ModelNotFoundException           если транзакция не найдена
+     * @throws AuthorizationException|Throwable при отсутствии права retry
      */
     public function retry(string $uuid, TransactionService $transactionService): RedirectResponse
     {
-        $transaction = Transaction::query()
-            ->with(['sourceAccount', 'targetAccount'])
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $transaction = Transaction::query()->with(['sourceAccount', 'targetAccount'])->where('uuid', $uuid)->firstOrFail();
 
         // retry = «можешь ли ты видеть эту транзакцию»
         $this->authorize('retry', $transaction);
@@ -215,10 +196,8 @@ final class TransactionController extends Controller
      * Пишет {@see AuditAction::TransactionQueued} только при фактическом создании
      * pending-транзакции (не при idempotent replay).
      */
-    private function auditQueuedIfCreated(
-        TransactionCreationResult $result,
-        Request $request,
-    ): void {
+    private function auditQueuedIfCreated(TransactionCreationResult $result, Request $request): void
+    {
         if (!$result->created) {
             return;
         }

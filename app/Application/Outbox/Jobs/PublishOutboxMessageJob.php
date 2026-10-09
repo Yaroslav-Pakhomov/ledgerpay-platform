@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Outbox\Jobs;
 
-use App\Application\Outbox\Services\OutboxPublisher;
+use App\Application\Outbox\Services\OutboxPublisherService;
 use App\Console\Commands\DispatchPendingOutboxMessagesCommand;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Outbox\Models\OutboxMessage;
@@ -21,7 +21,7 @@ use Throwable;
  * Infrastructure job для асинхронной публикации outbox-сообщения.
  *
  * Связывает scheduler ({@see DispatchPendingOutboxMessagesCommand})
- * с transport-слоем ({@see OutboxPublisher}). Job не содержит доменной логики —
+ * с transport-слоем ({@see OutboxPublisherService}). Job не содержит доменной логики —
  * только lock, смену статусов и делегирование publish.
  *
  * Идемпотентность:
@@ -56,27 +56,22 @@ final class PublishOutboxMessageJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('outbox:' . $this->outboxMessageId)
-                ->releaseAfter(15)
-                ->expireAfter(120),
+            new WithoutOverlapping('outbox:' . $this->outboxMessageId)->releaseAfter(15)->expireAfter(120),
         ];
     }
 
     /**
-     * Блокирует запись, публикует через {@see OutboxPublisher}, помечает published.
+     * Блокирует запись, публикует через {@see OutboxPublisherService}, помечает published.
      *
      * Выполняется в DB-транзакции: status processing → publish → published.
      *
      * @throws Throwable
      */
-    public function handle(OutboxPublisher $outboxPublisher): void
+    public function handle(OutboxPublisherService $outboxPublisher): void
     {
         DB::transaction(function () use ($outboxPublisher) {
 
-            $outboxMessage = OutboxMessage::query()
-                ->whereKey($this->outboxMessageId)
-                ->lockForUpdate()
-                ->first();
+            $outboxMessage = OutboxMessage::query()->whereKey($this->outboxMessageId)->lockForUpdate()->first();
 
             if (!$outboxMessage instanceof OutboxMessage) {
                 throw new ModelNotFoundException('Исходящее сообщение не найдено.');

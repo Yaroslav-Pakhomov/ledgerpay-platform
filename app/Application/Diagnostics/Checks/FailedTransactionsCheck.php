@@ -19,9 +19,7 @@ final class FailedTransactionsCheck implements IDiagnosticCheck
     public function run(): DiagnosticCheckResult
     {
         try {
-            $failed = Transaction::query()
-                ->where('status', TransactionStatus::Failed)
-                ->count();
+            $failed = Transaction::query()->where('status', TransactionStatus::Failed)->count();
 
             return new DiagnosticCheckResult(
                 name: 'failed_transactions',

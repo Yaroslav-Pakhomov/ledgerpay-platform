@@ -54,7 +54,7 @@
 | Клиент может безопасно повторять запросы | `Idempotency-Key` + уникальный индекс в БД                         |
 | Обработка может быть асинхронной | `ProcessTransactionJob` + очередь `transactions`                   |
 | Внешний API не должен светить внутренние ID | Публичные `uuid`, numeric `id` только внутри БД                    |
-| Журнал аудита операций | `audit_logs` + `AuditLogger`, неизменяемый `AuditLog`                 |
+| Журнал аудита операций | `audit_logs` + `AuditLoggerService`, неизменяемый `AuditLog`                 |
 
 ---
 
@@ -415,7 +415,7 @@ self::updating(fn () => throw new LogicException(...));
 self::deleting(fn () => throw new LogicException(...));
 ```
 
-`AuditLogger` (Application) пишет события из **Web**-контроллеров (Inertia: login, счета, web-транзакции, backoffice views — с `actor_user_id`, `X-Request-Id`) и из `ProcessTransactionJob` (без HTTP context). **REST API** (`Api/*`) audit не пишет на create-транзакции — только worker (`TransactionCompleted` / `TransactionFailed`). Просмотр — в backoffice `/backoffice/audit-logs`.
+`AuditLoggerService` (Application) пишет события из **Web**-контроллеров (Inertia: login, счета, web-транзакции, backoffice views — с `actor_user_id`, `X-Request-Id`) и из `ProcessTransactionJob` (без HTTP context). **REST API** (`Api/*`) audit не пишет на create-транзакции — только worker (`TransactionCompleted` / `TransactionFailed`). Просмотр — в backoffice `/backoffice/audit-logs`.
 
 **Исправление ошибок** — только через новые корректирующие транзакции, не правку старых проводок и audit-записей.
 

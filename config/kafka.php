@@ -9,7 +9,7 @@ return [
     | Kafka enabled
     |--------------------------------------------------------------------------
     |
-    | false — OutboxPublisher только пишет в log (dev/test/CI).
+    | false — OutboxPublisherService только пишет в log (dev/test/CI).
     | true  — дополнительно отправляет сообщение в Kafka/Redpanda.
     |
     */

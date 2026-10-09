@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Application\Outbox\Contracts\IKafkaMessageProducer;
-use App\Application\Outbox\Services\KafkaMessageProducer;
+use App\Application\Outbox\Services\KafkaMessageProducerService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -20,8 +20,8 @@ final class AppServiceProvider extends ServiceProvider
     #[\Override]
     public function register(): void
     {
-        // Outbox Kafka transport: final KafkaMessageProducer → интерфейс для DI и unit-тестов.
-        $this->app->bind(IKafkaMessageProducer::class, KafkaMessageProducer::class);
+        // Outbox Kafka transport: final KafkaMessageProducerService → интерфейс для DI и unit-тестов.
+        $this->app->bind(IKafkaMessageProducer::class, KafkaMessageProducerService::class);
 
         if (
             $this->app->environment('local') &&

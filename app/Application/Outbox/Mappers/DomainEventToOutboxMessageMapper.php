@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Outbox\Mappers;
 
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Domain\Outbox\Models\OutboxMessage;
 use App\Domain\Shared\Events\IDomainEvent;
 use Illuminate\Support\Facades\Context;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Context;
  * - `request_id` из {@see Context};
  * - `occurred_at` — метка времени ISO8601 момента преобразования.
  *
- * Вызывается из {@see OutboxWriter::recordEvent()}.
+ * Вызывается из {@see OutboxWriterService::recordEvent()}.
  */
 final class DomainEventToOutboxMessageMapper
 {

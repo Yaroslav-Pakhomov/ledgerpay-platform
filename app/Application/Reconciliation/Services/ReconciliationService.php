@@ -54,9 +54,7 @@ final class ReconciliationService
 
         $difference = $account->balance - $ledgerBalance;
 
-        $status = $difference === 0
-            ? ReconciliationStatus::Matched
-            : ReconciliationStatus::Mismatched;
+        $status = $difference === 0 ? ReconciliationStatus::Matched : ReconciliationStatus::Mismatched;
 
         return ReconciliationReport::query()->create([
             'account_id'      => $account->id,

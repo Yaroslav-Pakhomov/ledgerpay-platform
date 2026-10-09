@@ -27,7 +27,7 @@ use App\Domain\Transaction\Events\TransactionCreated;
  *
  * @see DomainEventToOutboxMessageMapper
  */
-final readonly class OutboxWriter
+final readonly class OutboxWriterService
 {
     public function __construct(
         private DomainEventToOutboxMessageMapper $domainEventToOutboxMapper,

@@ -23,7 +23,7 @@ use RuntimeException;
  * - structured log — всегда (observability, dev/CI без broker);
  * - Kafka/Redpanda — при `KAFKA_ENABLED=true` через {@see IKafkaMessageProducer}.
  */
-final readonly class OutboxPublisher
+final readonly class OutboxPublisherService
 {
     public function __construct(
         private IKafkaMessageProducer $kafkaProducer,

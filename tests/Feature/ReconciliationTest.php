@@ -96,8 +96,7 @@ final class ReconciliationTest extends TestCase
             ->count(2)
             ->create();
 
-        $this->artisan('reconciliation:run')
-            ->assertSuccessful();
+        $this->runArtisanSuccessfully('reconciliation:run');
 
         $this->assertDatabaseCount('reconciliation_reports', 2);
     }
@@ -205,8 +204,7 @@ final class ReconciliationTest extends TestCase
     {
         Account::factory()->withBalance(5_000)->create();
 
-        $this->artisan('reconciliation:run')
-            ->assertFailed();
+        $this->runArtisanFailed('reconciliation:run');
     }
 
     public function test_customer_cannot_run_reconciliation_for_single_account(): void

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Transaction\Jobs;
 
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Enums\TransactionStatus;
@@ -57,16 +57,14 @@ final class ProcessTransactionJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            new WithoutOverlapping('transaction:' . $this->transactionId)
-                ->releaseAfter(10)
-                ->expireAfter(60),
+            new WithoutOverlapping('transaction:' . $this->transactionId)->releaseAfter(10)->expireAfter(60),
         ];
     }
 
     /**
      * Загружает транзакцию, делегирует обработку в processor, пишет audit.
      *
-     * После успеха — {@see AuditAction::TransactionCompleted} через {@see AuditLogger}
+     * После успеха — {@see AuditAction::TransactionCompleted} через {@see AuditLoggerService}
      * (без HTTP context, `actor_user_id` = null).
      *
      * @throws Throwable
@@ -98,7 +96,7 @@ final class ProcessTransactionJob implements ShouldQueue
         $processed = $transactionProcessor->process($transaction);
 
         // Audit: TransactionCompleted — без HTTP context, actor_user_id = null.
-        app(AuditLogger::class)->log(
+        app(AuditLoggerService::class)->log(
             auditAction: AuditAction::TransactionCompleted,
             entity: $processed,
             metadata: [
@@ -117,7 +115,7 @@ final class ProcessTransactionJob implements ShouldQueue
      * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
      *
      * В одной DB-транзакции: Failed + outbox {@see \App\Domain\Transaction\Events\TransactionFailed}.
-     * Затем — {@see AuditAction::TransactionFailed} через {@see AuditLogger}.
+     * Затем — {@see AuditAction::TransactionFailed} через {@see AuditLoggerService}.
      *
      * @throws Throwable
      */
@@ -140,7 +138,7 @@ final class ProcessTransactionJob implements ShouldQueue
             fn (): Transaction => $transactionProcessor->failWithOutbox($transaction, $exception),
         );
 
-        app(AuditLogger::class)->log(
+        app(AuditLoggerService::class)->log(
             auditAction: AuditAction::TransactionFailed,
             entity: $failedTransaction,
             metadata: [

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Demo\Concerns;
 
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Ledger\Enums\LedgerDirection;
@@ -50,7 +50,7 @@ trait SeedsDemoTransactions
             'balance_after'  => $account->balance,
         ]);
 
-        app(OutboxWriter::class)->recordEvent(
+        app(OutboxWriterService::class)->recordEvent(
             new TransactionCompleted($transaction)
         );
 
@@ -81,7 +81,7 @@ trait SeedsDemoTransactions
             'balance_after'  => $account->balance,
         ]);
 
-        app(OutboxWriter::class)->recordEvent(
+        app(OutboxWriterService::class)->recordEvent(
             new TransactionCompleted($transaction)
         );
 
@@ -121,7 +121,7 @@ trait SeedsDemoTransactions
             'balance_after'  => $target->balance,
         ]);
 
-        app(OutboxWriter::class)->recordEvent(
+        app(OutboxWriterService::class)->recordEvent(
             new TransactionCompleted($transaction)
         );
 
@@ -143,7 +143,7 @@ trait SeedsDemoTransactions
             'failure_reason'         => $reason,
         ]);
 
-        app(OutboxWriter::class)->recordEvent(
+        app(OutboxWriterService::class)->recordEvent(
             new TransactionFailed(
                 transaction: $transaction,
                 reason: $reason,

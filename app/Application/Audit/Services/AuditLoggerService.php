@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Auth;
  * - {@see AuditAction::BackofficeCustomerViewed}: entity = {@see User},
  *   snapshot клиента передаётся в `metadata`.
  */
-final class AuditLogger
+final class AuditLoggerService
 {
     /**
      * Создаёт append-only запись в журнале аудита.
@@ -40,13 +40,8 @@ final class AuditLogger
      * @param  int|null             $actorUserId ID инициатора; по умолчанию {@see Auth::id()}
      * @return AuditLog             Созданная immutable-запись
      */
-    public function log(
-        AuditAction $auditAction,
-        ?Model $entity = null,
-        array $metadata = [],
-        ?Request $request = null,
-        ?int $actorUserId = null,
-    ): AuditLog {
+    public function log(AuditAction $auditAction, ?Model $entity = null, array $metadata = [], ?Request $request = null, ?int $actorUserId = null): AuditLog
+    {
         $actorUserId ??= Auth::id();
 
         return AuditLog::query()->create([
@@ -54,13 +49,11 @@ final class AuditLogger
             'action'        => $auditAction->value,
             'entity_type'   => $entity ? $entity::class : null,
             'entity_id'     => $entity?->getKey(),
-            'entity_uuid'   => $entity !== null && $entity->getRouteKeyName() === 'uuid'
-                ? (string) $entity->getRouteKey()
-                : null,
-            'metadata'   => $metadata === [] ? null : $metadata,
-            'request_id' => $request?->headers->get('X-Request-Id'),
-            'ip_address' => $request?->ip(),
-            'user_agent' => $request?->userAgent(),
+            'entity_uuid'   => $entity !== null && $entity->getRouteKeyName() === 'uuid' ? (string) $entity->getRouteKey() : null,
+            'metadata'      => $metadata === [] ? null : $metadata,
+            'request_id'    => $request?->headers->get('X-Request-Id'),
+            'ip_address'    => $request?->ip(),
+            'user_agent'    => $request?->userAgent(),
         ]);
     }
 }

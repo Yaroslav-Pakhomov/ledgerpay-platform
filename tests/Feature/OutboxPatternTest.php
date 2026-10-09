@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Outbox\Jobs\PublishOutboxMessageJob;
-use App\Application\Outbox\Services\OutboxPublisher;
-use App\Application\Outbox\Services\OutboxWriter;
+use App\Application\Outbox\Services\OutboxPublisherService;
+use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Application\Transaction\Services\TransactionService;
@@ -28,9 +28,9 @@ use Throwable;
 /**
  * Feature-тесты transactional outbox pattern.
  *
- * Проверяют цепочку {@see OutboxWriter} → `outbox_messages` →
+ * Проверяют цепочку {@see OutboxWriterService} → `outbox_messages` →
  * {@see DispatchPendingOutboxMessagesCommand} → {@see PublishOutboxMessageJob}
- * → {@see OutboxPublisher} для доменных событий транзакции:
+ * → {@see OutboxPublisherService} для доменных событий транзакции:
  *
  * - `transaction.created` — при создании pending-транзакции (HTTP);
  * - `transaction.completed` — после успешного {@see ProcessTransactionJob};
@@ -122,27 +122,29 @@ final class OutboxPatternTest extends TestCase
     {
         Queue::fake();
 
-        OutboxMessage::query()->create([
+        $message = OutboxMessage::query()->create([
             'event_name'     => 'transaction.created',
             'aggregate_type' => Transaction::class,
             'aggregate_id'   => 1,
-            'payload'        => [
-                'transaction_uuid' => 'test',
-            ],
-            'status'       => OutboxStatus::Pending,
-            'available_at' => now(),
+            'payload'        => ['transaction_uuid' => 'test'],
+            'status'         => OutboxStatus::Pending,
+            'available_at'   => null,
         ]);
 
-        $this->artisan('outbox:dispatch-pending')
-            ->assertSuccessful();
+        $this->assertDatabaseCount('outbox_messages', 1);
 
-        Queue::assertPushed(PublishOutboxMessageJob::class);
+        $this->runArtisanSuccessfully('outbox:dispatch-pending');
+
+        Queue::assertPushed(
+            PublishOutboxMessageJob::class,
+            fn (PublishOutboxMessageJob $job): bool => $job->outboxMessageId === $message->id,
+        );
     }
 
     /**
      * PublishOutboxMessageJob переводит outbox-запись в status published.
      *
-     * Transport ({@see OutboxPublisher}) вызывается синхронно в handle() без queue worker.
+     * Transport ({@see OutboxPublisherService}) вызывается синхронно в handle() без queue worker.
      *
      * @throws Throwable
      */
@@ -161,7 +163,7 @@ final class OutboxPatternTest extends TestCase
 
         app(PublishOutboxMessageJob::class, [
             'outboxMessageId' => $message->id,
-        ])->handle(app(OutboxPublisher::class));
+        ])->handle(app(OutboxPublisherService::class));
 
         $message->refresh();
 

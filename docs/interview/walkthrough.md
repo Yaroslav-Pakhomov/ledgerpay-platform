@@ -139,7 +139,7 @@ app/Http
 Открыть:
 
 - `app/Application/Diagnostics`
-- `app/Application/Audit/Services/AuditLogger.php`
+- `../../app/Application/Audit/Services/AuditLoggerService.php`
 
 Объяснить:
 

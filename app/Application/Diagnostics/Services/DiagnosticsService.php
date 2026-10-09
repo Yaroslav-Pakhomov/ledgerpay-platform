@@ -31,7 +31,7 @@ final readonly class DiagnosticsService
     ) {}
 
     /**
-     * @return array<int, DiagnosticCheckResult>
+     * @return list<DiagnosticCheckResult>
      */
     public function runReadinessChecks(): array
     {
@@ -55,21 +55,20 @@ final readonly class DiagnosticsService
      */
     public function readinessPayload(): array
     {
-        $checks = $this->runReadinessChecks();
+        $checks    = $this->runReadinessChecks();
+        $checkRows = [];
+        foreach ($checks as $check) {
+            $checkRows[] = $check->toArray();
+        }
 
-        $hasFailed = collect($checks)
-            ->contains(fn (DiagnosticCheckResult $check) => $check->status === 'failed');
+        $hasFailed = collect($checks)->contains(fn (DiagnosticCheckResult $check) => $check->status === 'failed');
 
-        $hasWarning = collect($checks)
-            ->contains(fn (DiagnosticCheckResult $check) => $check->status === 'warning');
+        $hasWarning = collect($checks)->contains(fn (DiagnosticCheckResult $check) => $check->status === 'warning');
 
         return [
             'status'     => $hasFailed ? 'failed' : ($hasWarning ? 'warning' : 'ok'),
-            'checked_at' => now()->toISOString(),
-            'checks'     => array_map(
-                fn (DiagnosticCheckResult $check) => $check->toArray(),
-                $checks,
-            ),
+            'checked_at' => now()->toIso8601String(),
+            'checks'     => $checkRows,
         ];
     }
 }

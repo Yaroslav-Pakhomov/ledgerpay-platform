@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -36,6 +38,8 @@ final class ApiDocsController extends Controller
 
     /**
      * Отдаёт OpenAPI YAML для Swagger UI и внешних клиентов.
+     *
+     * @throws FileNotFoundException
      */
     public function spec(): Response
     {
@@ -46,7 +50,7 @@ final class ApiDocsController extends Controller
         abort_unless(is_readable($path), HttpResponse::HTTP_NOT_FOUND);
 
         return response(
-            file_get_contents($path),
+            File::get($path),
             HttpResponse::HTTP_OK,
             ['Content-Type' => 'application/yaml; charset=utf-8'],
         );

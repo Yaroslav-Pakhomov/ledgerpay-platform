@@ -15,20 +15,20 @@ use Throwable;
 /**
  * Infrastructure-сервис отправки outbox-envelope в Kafka/Redpanda.
  *
- * Реализует {@see IKafkaMessageProducer}. Вызывается из {@see OutboxPublisher}
+ * Реализует {@see IKafkaMessageProducer}. Вызывается из {@see OutboxPublisherService}
  * после structured log (когда `config('kafka.enabled') === true`).
  *
  * Без действия при `config('kafka.enabled') === false` (defense-in-depth:
- * {@see OutboxPublisher} также проверяет flag перед вызовом).
+ * {@see OutboxPublisherService} также проверяет flag перед вызовом).
  */
-final class KafkaMessageProducer implements IKafkaMessageProducer
+final class KafkaMessageProducerService implements IKafkaMessageProducer
 {
     /**
      * Сериализует envelope в JSON и отправляет в Kafka/Redpanda.
      *
      * @param string               $topic   Имя topic из `config('kafka.topic')`
      * @param string|null          $key     Partition key для упорядоченности событий агрегата
-     * @param array<string, mixed> $body    Envelope ({@see OutboxPublisher::buildEnvelope()})
+     * @param array<string, mixed> $body    Envelope ({@see OutboxPublisherService::buildEnvelope()})
      * @param array<string, mixed> $headers Kafka headers для idempotency downstream
      *
      * @throws JsonException    Ошибка JSON-сериализации тела сообщения
@@ -49,9 +49,7 @@ final class KafkaMessageProducer implements IKafkaMessageProducer
                 continue;
             }
 
-            $kafkaHeaders[] = new RecordHeader()
-                ->setHeaderKey((string) $name)
-                ->setValue((string) $value);
+            $kafkaHeaders[] = new RecordHeader()->setHeaderKey((string) $name)->setValue((string) $value);
         }
 
         try {

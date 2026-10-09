@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web\Backoffice;
 
-use App\Application\Audit\Services\AuditLogger;
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Customer\Models\Customer;
@@ -25,10 +25,10 @@ use Inertia\Response;
 final class CustomerController extends Controller
 {
     /**
-     * @param AuditLogger $audit Сервис записи audit-событий
+     * @param AuditLoggerService $audit Сервис записи audit-событий
      */
     public function __construct(
-        private readonly AuditLogger $audit,
+        private readonly AuditLoggerService $audit,
     ) {}
 
     /**

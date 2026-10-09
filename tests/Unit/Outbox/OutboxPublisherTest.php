@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Outbox;
 
 use App\Application\Outbox\Contracts\IKafkaMessageProducer;
-use App\Application\Outbox\Services\KafkaMessageProducer;
-use App\Application\Outbox\Services\OutboxPublisher;
+use App\Application\Outbox\Services\KafkaMessageProducerService;
+use App\Application\Outbox\Services\OutboxPublisherService;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Outbox\Models\OutboxMessage;
 use App\Domain\Transaction\Models\Transaction;
@@ -17,9 +17,9 @@ use Mockery\Expectation;
 use Tests\TestCase;
 
 /**
- * Unit-тесты {@see OutboxPublisher}: structured log + опциональная отправка в Kafka.
+ * Unit-тесты {@see OutboxPublisherService}: structured log + опциональная отправка в Kafka.
  *
- * {@see KafkaMessageProducer} — final; mock через {@see IKafkaMessageProducer}.
+ * {@see KafkaMessageProducerService} — final; mock через {@see IKafkaMessageProducer}.
  * Проверки — Mockery expectations; верификация в {@see tearDown()} → Mockery::close().
  */
 final class OutboxPublisherTest extends TestCase
@@ -70,7 +70,7 @@ final class OutboxPublisherTest extends TestCase
         ]);
 
         /** @phpstan-ignore-next-line argument.type */
-        new OutboxPublisher($kafka)->publish($message);
+        new OutboxPublisherService($kafka)->publish($message);
     }
 
     /**
@@ -95,6 +95,6 @@ final class OutboxPublisherTest extends TestCase
             'status'         => OutboxStatus::Pending,
         ]);
 
-        new OutboxPublisher(new KafkaMessageProducer)->publish($message);
+        new OutboxPublisherService(new KafkaMessageProducerService)->publish($message);
     }
 }

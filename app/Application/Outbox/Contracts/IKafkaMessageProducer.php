@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Application\Outbox\Contracts;
 
-use App\Application\Outbox\Services\KafkaMessageProducer;
-use App\Application\Outbox\Services\OutboxPublisher;
+use App\Application\Outbox\Services\KafkaMessageProducerService;
+use App\Application\Outbox\Services\OutboxPublisherService;
 
 /**
  * Контракт отправки outbox-envelope во внешний broker (Kafka/Redpanda).
  *
- * Реализация: {@see KafkaMessageProducer}.
- * Вызывается из {@see OutboxPublisher} при `KAFKA_ENABLED=true`.
+ * Реализация: {@see KafkaMessageProducerService}.
+ * Вызывается из {@see OutboxPublisherService} при `KAFKA_ENABLED=true`.
  */
 interface IKafkaMessageProducer
 {

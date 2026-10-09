@@ -24,7 +24,7 @@ final class HealthController extends Controller
     {
         return response()->json([
             'status'     => 'ok',
-            'checked_at' => now()->toISOString(),
+            'checked_at' => now()->toIso8601String(),
         ]);
     }
 

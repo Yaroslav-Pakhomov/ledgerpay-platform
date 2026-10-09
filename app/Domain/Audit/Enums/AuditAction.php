@@ -32,7 +32,7 @@ namespace App\Domain\Audit\Enums;
  * - backoffice_dashboard_viewed — просмотр дашборда (зарезервировано).
  *
  * Используется для:
- * - типобезопасной записи событий через AuditLogger;
+ * - типобезопасной записи событий через AuditLoggerService;
  * - фильтрации и отображения журнала аудита в backoffice;
  * - compliance, расследований и отладки операций.
  */
