@@ -16,5 +16,6 @@
 | [ADR-008: Ограничение частоты запросов (rate limiting)](./adr-008-rate-limiting-abuse-protection.md) | Лимиты запросов и security headers                                 |
 | [ADR-009: Типизированные доменные события](./adr-009-typed-domain-events.md)           | Типизированные доменные события и преобразователь outbox          |
 | [ADR-010: Состояние, готовность и диагностика](./adr-010-health-readiness-diagnostics.md) | Работоспособность/Готовность (Liveness/readiness), CLI и страница диагностики бэк-офиса        |
+| [ADR-011: Account-sharded queues (Аккаунт-сегментированные очереди) + Horizon](./adr-011-account-sharded-transaction-queues.md) | Shard-очереди `transactions-account-XX`, routing, Horizon workers |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

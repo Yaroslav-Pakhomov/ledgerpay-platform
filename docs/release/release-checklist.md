@@ -25,12 +25,25 @@
 - Войти как `admin@ledgerpay.test` / `StrongPassword123!`
 - Backoffice: dashboard, транзакции, audit, outbox, сверка, **диагностика**
 - Войти как `alice@ledgerpay.test` / `StrongPassword123!`
-- Создать счёт → поставить deposit в очередь → запустить worker → открыть ledger
+- Создать счёт → поставить deposit в очередь → запустить Horizon → открыть ledger
+- (Опционально) Войти как admin → открыть `/horizon` — dashboard очередей
 
-## Queue worker
+## Queue worker (Horizon)
 
 ```bash
-./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
+./vendor/bin/sail artisan horizon
+```
+
+Проверка статуса:
+
+```bash
+./vendor/bin/sail artisan horizon:status
+```
+
+Остановка для деплоя конфигурации:
+
+```bash
+./vendor/bin/sail artisan horizon:terminate
 ```
 
 ## Планировщик
@@ -50,7 +63,7 @@ curl -s http://localhost/api/v1/health/ready
 
 - [ ] README актуален
 - [ ] В OpenAPI server указан `/api/v1`
-- [ ] ADR описывают ключевые решения ([`docs/architecture/`](../architecture/))
+- [ ] ADR описывают ключевые решения, включая shard queues ([ADR-011](../architecture/adr-011-account-sharded-transaction-queues.md))
 - [ ] Сценарий для собеседования открывается из README ([`docs/interview/walkthrough.md`](../interview/walkthrough.md))
 - [ ] Личные заметки demo (опционально, локально, не в git): `docs/interview/portfolio-notes.md`
 - [ ] В CHANGELOG есть запись о релизе

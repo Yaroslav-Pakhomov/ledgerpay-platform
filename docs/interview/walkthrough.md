@@ -67,14 +67,19 @@ app/Http
 
 Открыть:
 
-`app/Application/Transaction/Jobs/ProcessTransactionJob.php`
+- `app/Application/Transaction/Services/TransactionService.php` (dispatch)
+- `app/Application/Transaction/Routing/TransactionQueueRouter.php`
+- `app/Application/Transaction/Jobs/ProcessTransactionJob.php`
 
 Объяснить:
 
 - HTTP создаёт транзакцию в статусе pending
-- worker выполняет движение денег
-- ошибки переводят транзакцию в failed
-- в backoffice можно retry
+- job попадает в shard-очередь `transactions-account-XX` по routing account (deposit → target, withdrawal/transfer → source)
+- **Laravel Horizon** обрабатывает shards + `outbox` + `default`; UI `/horizon` для backoffice (web-сессия)
+- worker выполняет движение денег; приоритетная последовательность — `lockForUpdate` в процессе, не только очередь
+- ошибки переводят транзакцию в failed; в бэк-офисе можно повторить (повторный dispatch в тот же shard)
+
+Подробнее: [ADR-003](../architecture/adr-003-async-transaction-processing.md), [ADR-011](../architecture/adr-011-account-sharded-transaction-queues.md).
 
 ## 6. Показать целостность данных
 
@@ -146,8 +151,9 @@ app/Http
 - correlation / request ID (`X-Request-Id`)
 - структурированные логи
 - audit trail
-- readiness checks: `/api/v1/health/ready`
+- проверка готовности: `/api/v1/health/ready` (backlog по всем shard-очередям + outbox)
 - страница диагностики: `/backoffice/diagnostics`
+- мониторинг очередей: `/horizon` (backoffice)
 
 ## 11. Показать тесты
 
@@ -165,6 +171,7 @@ app/Http
 - outbox — `OutboxPatternTest`
 - сверка — `ReconciliationTest`
 - диагностика — `DiagnosticsTest`
+- маршрутизация shard-очередей — `TransactionQueueRoutingTest`
 - **конкурентность (несколько PHP-процессов, PostgreSQL)** — `tests/Concurrency/TransactionConcurrencyTest`: параллельные списания, встречные переводы, гонка ключа идемпотентности
 
 ## Завершение (рекомендуемая формулировка)

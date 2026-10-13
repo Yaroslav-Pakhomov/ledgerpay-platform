@@ -12,7 +12,9 @@
 
 ## Решение
 
-HTTP-слой (`TransactionService`) создаёт транзакцию в статусе **pending**, записывает outbox `transaction.created` (при первом создании, не при idempotent replay — см. [ADR-004](./adr-004-idempotency.md)) и dispatch'ит `ProcessTransactionJob` в очередь Redis **`transactions`**.
+HTTP-слой (`TransactionService`) создаёт транзакцию в статусе **pending**, записывает outbox `transaction.created` (при первом создании, не при idempotent replay — см. [ADR-004](./adr-004-idempotency.md)) и dispatch'ит `ProcessTransactionJob` в Redis-очередь, выбранную **`TransactionQueueRouter`** (shard/сегмент `transactions-account-XX`; см. [ADR-011](./adr-011-account-sharded-transaction-queues.md)).
+
+Workers запускаются через **Laravel Horizon** (`artisan horizon`); отдельно обрабатываются очереди **`outbox`** и **`default`**.
 
 Worker (`TransactionProcessorService` внутри job):
 

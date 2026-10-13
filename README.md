@@ -325,7 +325,7 @@ Check Idempotency-Key
         ↓
 Create Pending transaction
         ↓
-Dispatch ProcessTransactionJob
+Dispatch ProcessTransactionJob → shard queue (TransactionQueueRouter)
         ↓
 Return HTTP response
 ```
@@ -744,15 +744,29 @@ composer install
 
 ---
 
-### Queue Worker
+### Queue Worker (Horizon)
 
-Транзакции обрабатываются через Redis Queue.
+Транзакции обрабатываются через Redis Queue; workers управляются **Laravel Horizon**.
 
-Запуск worker:
+Запуск:
 
 ```bash
-./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
+./vendor/bin/sail artisan horizon
+# или
+make worker
+make horizon
 ```
+
+Статус и остановка (деплой конфигурации):
+
+```bash
+make horizon-status
+make horizon-terminate
+```
+
+**Horizon UI:** после web-login как backoffice (`admin@ledgerpay.test`) — [http://localhost/horizon](http://localhost/horizon) (путь: env `HORIZON_PATH`, default `horizon`). Доступ: `User::isBackOffice()`.
+
+Подробнее: [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md).
 
 Для outbox и сверки нужен scheduler:
 
@@ -766,6 +780,30 @@ composer install
 ./vendor/bin/sail artisan reconciliation:run
 ./vendor/bin/sail artisan idempotency:prune-expired
 ```
+
+---
+
+### Account-sharded transaction queues
+
+`TransactionQueueRouter` направляет `ProcessTransactionJob` в shard-очереди по **routing account**:
+
+| Операция | Routing account |
+|----------|-----------------|
+| Deposit | `target_account_id` |
+| Withdrawal / transfer | `source_account_id` |
+
+Имена очередей (при 16 shards по умолчанию):
+
+```text
+transactions-account-00
+transactions-account-01
+...
+transactions-account-15
+```
+
+Shard: `account_id % LEDGERPAY_TRANSACTION_QUEUE_SHARDS` (см. `.env.example`). При смене числа shards (сегментов) обновите список очередей в `config/horizon.php`.
+
+Один маршрут аккаунта → один shard → FIFO внутри очереди; разные аккаунты → параллельная обработка. Консистентность баланса по-прежнему обеспечивает `lockForUpdate` в `TransactionProcessorService`, а не только очередь.
 
 ---
 

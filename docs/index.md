@@ -34,3 +34,4 @@
 - [ADR-008: Ограничение частоты запросов (rate limiting) и защита от злоупотреблений](architecture/adr-008-rate-limiting-abuse-protection.md)
 - [ADR-009: Типизированные доменные события](architecture/adr-009-typed-domain-events.md)
 - [ADR-010: Состояние, готовность и диагностика](architecture/adr-010-health-readiness-diagnostics.md)
+- [ADR-011: Account-sharded transaction queues (Аккаунт-сегментированные очереди транзакций) и Horizon](architecture/adr-011-account-sharded-transaction-queues.md)

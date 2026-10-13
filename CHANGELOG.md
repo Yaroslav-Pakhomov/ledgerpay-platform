@@ -6,6 +6,10 @@
 
 ### Добавлено
 
+- Аккаунт-сегментированные Redis-очереди для `ProcessTransactionJob` (`TransactionQueueRouter`, `transactions-account-XX`, env `LEDGERPAY_TRANSACTION_QUEUE_SHARDS`).
+- Laravel Horizon: супервизоры для сегментированных очередей обработки транзакций, outbox и default; Makefile-цели `horizon`, `horizon-status`, `horizon-terminate`.
+- Диагностика backlog очереди с учётом всех сегмент-очередей ([ADR-011](docs/architecture/adr-011-account-sharded-transaction-queues.md)).
+- Feature-тесты `TransactionQueueRoutingTest`.
 - Набор тестов конкурентности на PostgreSQL (`tests/Concurrency/`, PHPUnit suite `Concurrency`): параллельные списания, встречные переводы, гонка по ключу идемпотентности, двойная обработка одной транзакции.
 
 ## [2.0.0] — Portfolio Release

@@ -52,7 +52,7 @@
 | Деньги нельзя «потерять» или зачислить дважды | DB-транзакции, блокировка строк, проверка статуса, идемпотентность |
 | История операций должна быть аудируемой | `ledger_entries` — неизменяемые записи с `balance_after`           |
 | Клиент может безопасно повторять запросы | `Idempotency-Key` + уникальный индекс в БД                         |
-| Обработка может быть асинхронной | `ProcessTransactionJob` + очередь `transactions`                   |
+| Обработка может быть асинхронной | `ProcessTransactionJob` + shard-очереди `transactions-account-XX` ([ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)), Horizon |
 | Внешний API не должен светить внутренние ID | Публичные `uuid`, numeric `id` только внутри БД                    |
 | Журнал аудита операций | `audit_logs` + `AuditLoggerService`, неизменяемый `AuditLog`                 |
 
@@ -65,7 +65,7 @@
 | PHP 8.5+ | strict types, enums, readonly | Типобезопасность в финансовом коде                |
 | Laravel 13 | routing, Eloquent, queues, validation | Быстрая инфраструктура без изобретения велосипеда |
 | PostgreSQL | через Eloquent / Sail | ACID-транзакции, атомарность движения денег     |
-| Redis + Laravel Queue | `ProcessTransactionJob` | Отделение HTTP-ответа от тяжёлой обработки        |
+| Redis + Laravel Queue + Horizon | `ProcessTransactionJob`, supervisors в `config/horizon.php` | Отделение HTTP-ответа от тяжёлой обработки, мониторинг workers |
 | Laravel Sanctum | API tokens | Аутентификация REST API                         |
 | Inertia + Vue 3 + Tailwind | web/backoffice UI | Клиентский кабинет и операторский backoffice     |
 | OpenAPI + Swagger UI | `docs/openapi/`, `/api/docs` | Контракт API и интерактивная документация       |
@@ -73,7 +73,7 @@
 | PHPStan + Pint + Rector | `composer quality` | Статический анализ и единый стиль                 |
 | GitHub Actions | `.github/workflows/ci.yml` | `quality:ci`, frontend build, PostgreSQL на push/PR |
 
-Локальная разработка: **`./vendor/bin/sail up -d`** (PostgreSQL, Redis, app) — основной путь в README. Альтернатива **`composer dev`** (serve + queue + pail + Vite) — без Sail, нужны локальные PostgreSQL и Redis.
+Локальная разработка: **`./vendor/bin/sail up -d`** (PostgreSQL, Redis, app) — основной путь в README; workers — **`./vendor/bin/sail artisan horizon`**. Альтернатива **`composer dev`** (serve + `queue:listen` + pail + Vite) — без Sail; `queue:listen` **не** слушает все shard-очереди транзакций — для полного money-flow demo используйте Sail + Horizon.
 
 ### Состояние, готовность и диагностика
 
@@ -265,6 +265,7 @@ TransactionController → TransactionService::deposit()
     │
     ├── createTransactionOnce() → Transaction (Pending)
     └── dispatchIfNewPending()  → ProcessTransactionJob
+                                 → onQueue(TransactionQueueRouter)
                                  (только если created=true)
     │
     ▼
@@ -296,7 +297,7 @@ HTTP-запрос не должен ожидать блокировок счет
 ### Этап 2 — Worker: исполнение (асинхронно)
 
 ```text
-ProcessTransactionJob
+ProcessTransactionJob  (очередь: transactions-account-XX)
     │
     ├── WithoutOverlapping (защита от параллельной обработки в очереди)
     ├── пропуск, если статус Completed / Failed
@@ -620,7 +621,10 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 2. **API v2+ / эволюция JSON** — breaking changes только через новую версию; v1 отделён (`Api/V1`, `Resources/V1`, ADR при необходимости). Rate limiting на API — реализован (ADR-008); дальше — scoped Sanctum tokens.
 3. **Outbox + типизированные доменные события** — реализован (ADR-006, ADR-009): `transaction.created` / `transaction.completed` / `transaction.failed` / `transaction.retried`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
 4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
-5. **Observability** — Telescope в dev; добавить **OpenAPI lint** в CI (`quality:ci` и `npm run build` уже в [GitHub Actions](./.github/workflows/ci.yml)).
+5. **Observability** — Telescope в dev; Horizon для очередей (реализовано, [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)); дальше — metrics/tracing (Prometheus, OpenTelemetry).
+6. **High-load DB** — partitioning `ledger_entries` / audit / outbox, cursor pagination в backoffice (следующий этап после shard queues).
+
+**Уже сделано (high-load):** account-sharded transaction queues + Horizon.
 
 ---
 
@@ -640,8 +644,12 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
                                                         │
                                   ┌─────────────────────┼─────────────────────┐
                                    ▼                    ▼                     ▼
-                            transactions           jobs table           HTTP 201 / 200
+                            transactions           Redis queue          HTTP 201 / 200
                             (status: pending)   ProcessTransactionJob
+                                                (shard via router)
+                                                         │
+                                                         ▼
+                                          Horizon worker (transactions-sharded)
                                                          │
                                                          ▼
                                           ┌────────────────────────────┐

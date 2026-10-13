@@ -23,7 +23,7 @@ LedgerPay предоставляет:
 
 - PostgreSQL;
 - Redis;
-- backlog очереди;
+- backlog очереди (при Redis — сумма по всем shard/сегмент-очередям `transactions-account-XX`, см. [ADR-011](./adr-011-account-sharded-transaction-queues.md), плюс `outbox` и `default`);
 - backlog outbox;
 - неуспешные транзакции.
 

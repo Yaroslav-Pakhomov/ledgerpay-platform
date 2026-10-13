@@ -14,7 +14,7 @@ test:
 	./vendor/bin/sail artisan test
 
 worker:
-	./vendor/bin/sail artisan queue:work redis --queue=transactions,outbox,default
+	./vendor/bin/sail artisan horizon
 
 schedule:
 	./vendor/bin/sail artisan schedule:work
@@ -59,6 +59,15 @@ rector:
 
 rector-test:
 	./vendor/bin/sail php vendor/bin/rector process --dry-run
+
+horizon:
+	./vendor/bin/sail artisan horizon
+
+horizon-status:
+	./vendor/bin/sail artisan horizon:status
+
+horizon-terminate:
+	./vendor/bin/sail artisan horizon:terminate
 
 quality: pint-test stan rector-test
 

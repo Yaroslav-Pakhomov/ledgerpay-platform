@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Diagnostics\Checks;
 
 use App\Application\Diagnostics\DTO\DiagnosticCheckResult;
+use App\Application\Transaction\Routing\TransactionQueueRouter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -40,11 +41,14 @@ final class QueueBacklogCheck implements IDiagnosticCheck
             }
 
             if ($connection === 'redis') {
-                $prefix     = (string) config('database.redis.options.prefix');
-                $queueNames = ['transactions', 'outbox', 'default'];
-                $counts     = [];
+                $prefix = (string) config('database.redis.options.prefix');
 
-                foreach ($queueNames as $name) {
+                $transactionQueueNames = app(TransactionQueueRouter::class)->allTransactionQueues();
+
+                $logicalNames = array_merge($transactionQueueNames, ['outbox', 'default']);
+                $counts       = [];
+
+                foreach ($logicalNames as $name) {
                     $key          = $prefix . 'queues:' . $name;
                     $counts[$key] = Redis::connection()->llen($key);
                 }
@@ -54,7 +58,7 @@ final class QueueBacklogCheck implements IDiagnosticCheck
                 return new DiagnosticCheckResult(
                     name: 'queue_backlog',
                     status: $total < 1000 ? 'ok' : 'warning',
-                    message: 'Проверен backlog очереди Redis.',
+                    message: 'Проверен backlog sharded Redis-очередей.',
                     context: [
                         'connection' => 'redis',
                         'queues'     => $counts,

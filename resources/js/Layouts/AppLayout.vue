@@ -29,6 +29,14 @@ function logout() {
                         Бэк-офис
                     </Link>
 
+                    <a
+                        v-if="page.props.auth.user?.is_backoffice"
+                        href="/horizon" target="_blank"
+                        class="text-indigo-400 hover:text-indigo-300"
+                    >
+                        Horizon
+                    </a>
+
                     <Link
                         v-if="page.props.auth.user?.is_backoffice"
                         :href="route('backoffice.transactions.index')"

@@ -10,6 +10,7 @@ use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Results\TransactionCreationResult;
+use App\Application\Transaction\Routing\TransactionQueueRouter;
 use App\Domain\Account\Models\Account;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Enums\TransactionType;
@@ -34,6 +35,7 @@ final readonly class TransactionService
 {
     public function __construct(
         private OutboxWriterService $outboxWriter,
+        private TransactionQueueRouter $queueRouter,
     ) {}
 
     /**
@@ -200,7 +202,8 @@ final readonly class TransactionService
             );
         });
 
-        ProcessTransactionJob::dispatch($transaction->id);
+        ProcessTransactionJob::dispatch($transaction->id)
+            ->onQueue($this->queueRouter->queueFor($transaction));
 
         return $transaction->refresh();
     }
@@ -280,7 +283,8 @@ final readonly class TransactionService
             return;
         }
 
-        ProcessTransactionJob::dispatch($result->transaction->id);
+        ProcessTransactionJob::dispatch($result->transaction->id)
+            ->onQueue($this->queueRouter->queueFor($result->transaction));
     }
 
     /**
