@@ -27,4 +27,9 @@ return [
          */
         'transaction_shards' => (int) env('LEDGERPAY_TRANSACTION_QUEUE_SHARDS', 16),
     ],
+
+    'pagination' => [
+        'default_limit' => (int) env('LEDGERPAY_DEFAULT_CURSOR_LIMIT', 50),
+        'max_limit'     => (int) env('LEDGERPAY_MAX_CURSOR_LIMIT', 100),
+    ],
 ];

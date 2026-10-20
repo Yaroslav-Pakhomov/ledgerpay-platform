@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Schedule as ScheduleAlias;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function (): void {
     $this->comment(Inspiring::quote());
@@ -14,18 +14,24 @@ Artisan::command('inspire', function (): void {
 // withoutOverlapping() — предотвращает одновременное выполнение нескольких экземпляров этой scheduled-команды.
 // everyMinute() — планирует запуск раз в минуту;
 // «Исходящие» в очередь
-ScheduleAlias::command('outbox:dispatch-pending --limit=100')
+Schedule::command('outbox:dispatch-pending --limit=100')
     ->everyMinute()
     ->withoutOverlapping();
 
 // hourly() — планирует запуск раз в час;
 // Сверка балансов счетов с реестром проводок
-ScheduleAlias::command('reconciliation:run --limit=1000')
+Schedule::command('reconciliation:run --limit=1000')
     ->hourly()
     ->withoutOverlapping();
 
 // daily() - каждый день
 // Удаление истекших ключей идемпотентности
-ScheduleAlias::command('idempotency:prune-expired --limit=1000')
+Schedule::command('idempotency:prune-expired --limit=1000')
     ->daily()
     ->withoutOverlapping();
+
+// --months=2 у ensure — это текущий месяц и следующий
+Schedule::command('partitions:ensure ledger_entries --months=2')->daily();
+Schedule::command('partitions:ensure audit_logs --months=2')->daily();
+Schedule::command('partitions:ensure outbox_messages --months=2')->daily();
+Schedule::command('partitions:ensure reconciliation_reports --months=2')->daily();

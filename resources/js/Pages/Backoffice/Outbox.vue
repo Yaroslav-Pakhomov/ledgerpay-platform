@@ -3,8 +3,8 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import {Link, router, useForm} from '@inertiajs/vue3';
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
-import Pagination from '@/Components/UI/Pagination.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
+import CursorPagination from "@/Components/UI/CursorPagination.vue";
 
 defineOptions({
     layout: AppLayout,
@@ -120,7 +120,11 @@ function applyFilters() {
                     </tr>
                     </tbody>
                 </table>
-                <Pagination :links="messages.links" />
+
+                <CursorPagination
+                    :prev-page-url="messages.prev_page_url"
+                    :next-page-url="messages.next_page_url"
+                />
             </div>
         </section>
     </div>

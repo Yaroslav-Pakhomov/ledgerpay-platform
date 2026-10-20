@@ -807,6 +807,32 @@ Shard: `account_id % LEDGERPAY_TRANSACTION_QUEUE_SHARDS` (см. `.env.example`).
 
 ---
 
+### Cursor pagination
+
+Для списков с большим объёмом данных используется **cursor pagination** вместо offset pagination.
+
+Таблицы: transactions, ledger entries, audit logs, outbox messages, reconciliation reports.
+
+Query-параметры API: `cursor`, `limit` (см. `LEDGERPAY_DEFAULT_CURSOR_LIMIT`, `LEDGERPAY_MAX_CURSOR_LIMIT`).
+
+### Стратегия партиционирования
+
+Append-only таблицы переводятся на **range partitioning** PostgreSQL по `created_at` через shadow-миграцию (`{table}_partitioned` → swap).
+
+Подготовка и сверка:
+
+```bash
+./vendor/bin/sail artisan partitions:cutover ledger_entries --from=2026-05 --months=12
+```
+
+Переключение (окно обслуживания): `partitions:swap ledger_entries --confirm-writes-stopped`. Новые месяцы: `partitions:ensure ledger_entries --months=2`.
+
+Таблицы: `ledger_entries`, `audit_logs`, `outbox_messages`, `reconciliation_reports`.
+
+Подробнее: [partitioning-plan.md](./docs/architecture/partitioning-plan.md), [ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md).
+
+---
+
 ### Run Tests
 
 ```bash

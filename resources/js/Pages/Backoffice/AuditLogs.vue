@@ -4,7 +4,7 @@ import AppLayout from "@/Layouts/AppLayout.vue";
 import {Link, router, useForm} from "@inertiajs/vue3";
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
-import Pagination from '@/Components/UI/Pagination.vue';
+import CursorPagination from "@/Components/UI/CursorPagination.vue";
 
 defineOptions({
     layout: AppLayout,
@@ -103,7 +103,10 @@ function applyFilters() {
                     </tbody>
                 </table>
 
-                <Pagination :links="logs.links" />
+                <CursorPagination
+                    :prev-page-url="logs.prev_page_url"
+                    :next-page-url="logs.next_page_url"
+                />
             </div>
         </section>
     </div>

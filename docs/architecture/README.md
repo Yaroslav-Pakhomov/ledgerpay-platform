@@ -17,5 +17,7 @@
 | [ADR-009: Типизированные доменные события](./adr-009-typed-domain-events.md)           | Типизированные доменные события и преобразователь outbox          |
 | [ADR-010: Состояние, готовность и диагностика](./adr-010-health-readiness-diagnostics.md) | Работоспособность/Готовность (Liveness/readiness), CLI и страница диагностики бэк-офиса        |
 | [ADR-011: Account-sharded queues (Аккаунт-сегментированные очереди) + Horizon](./adr-011-account-sharded-transaction-queues.md) | Shard-очереди `transactions-account-XX`, routing, Horizon workers |
+| [ADR-012: Cursor pagination и партиционирование](./adr-012-cursor-pagination-partitioning.md) | Cursor-листы, индексы, cutover CLI (`partitions:*`), [partitioning-plan](./partitioning-plan.md) |
+| [План партиционирования](./partitioning-plan.md) | Range-партиционирование append-only таблиц, миграция через shadow-таблицу |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

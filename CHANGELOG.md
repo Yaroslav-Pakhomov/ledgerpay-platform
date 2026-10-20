@@ -11,6 +11,10 @@
 - Диагностика backlog очереди с учётом всех сегмент-очередей ([ADR-011](docs/architecture/adr-011-account-sharded-transaction-queues.md)).
 - Feature-тесты `TransactionQueueRoutingTest`.
 - Набор тестов конкурентности на PostgreSQL (`tests/Concurrency/`, PHPUnit suite `Concurrency`): параллельные списания, встречные переводы, гонка по ключу идемпотентности, двойная обработка одной транзакции.
+- Cursor pagination для API (`GET /transactions`, `GET /accounts/{uuid}/ledger`) и backoffice-листов; `CursorPaginationPayload`, конфиг `ledgerpay.pagination`.
+- Индексы под `ORDER BY id DESC` для cursor-пагинации.
+- Документ `docs/architecture/partitioning-plan.md`, ADR-012, cutover pipeline (`PartitionCatalog`, `PartitionCutover`, Artisan `partitions:prepare|backfill|validate|swap|cutover|ensure`, scheduler `partitions:ensure`).
+- Feature-тест `CursorPaginationTest`.
 
 ## [2.0.0] — Portfolio Release
 

@@ -38,8 +38,10 @@ info:
     Ответы включают заголовок `X-API-Version: v1`.
     Legacy `/api/*` (без v1) — deprecated; см. docs/api-versioning.md.
 
-    Списки (index) — Laravel pagination: `data`, `links`, `meta`.
-    GET `/transactions/{uuid}` — исключение: объект транзакции **в корне** JSON.
+    Списки customers и accounts (index) — offset pagination: `data`, `links`, `meta`.
+    GET `/transactions` и GET `/accounts/{uuid}/ledger` — cursor pagination: `data`, `meta`
+    (`per_page`, `next_cursor`, `prev_cursor`, `has_more_pages`); query `cursor`, `limit`.
+    GET `/transactions/{uuid}` — объект транзакции **в корне** JSON (не обёртка list).
 
 servers:
   - url: http://localhost/api/v1
@@ -319,16 +321,20 @@ paths:
     get:
       summary: Записи ledger
       tags: [Accounts]
-      parameters: [{ $ref: "#/components/parameters/Uuid" }]
+      parameters:
+        - { $ref: "#/components/parameters/Uuid" }
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/PageLimit" }
       responses:
         "200":
-          description: Страница проводок ledger
+          description: Страница проводок ledger (cursor pagination)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedLedgerEntries"
+                $ref: "#/components/schemas/CursorPaginatedLedgerEntriesResponse"
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   # ─── Transactions (money movement + idempotency) ────────────────────
@@ -336,14 +342,18 @@ paths:
     get:
       summary: Список транзакций
       tags: [Transactions]
+      parameters:
+        - { $ref: "#/components/parameters/Cursor" }
+        - { $ref: "#/components/parameters/PageLimit" }
       responses:
         "200":
-          description: Страница транзакций
+          description: Страница транзакций (cursor pagination)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PaginatedTransactions"
+                $ref: "#/components/schemas/CursorPaginatedTransactionsResponse"
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /transactions/deposit:
@@ -531,6 +541,18 @@ components:
       required: false
       description: Correlation ID (если не передан — генерируется сервером)
       schema: { type: string, format: uuid }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque cursor из `meta.next_cursor` / `meta.prev_cursor` предыдущего ответа
+      schema: { type: string }
+    PageLimit:
+      name: limit
+      in: query
+      required: false
+      description: Размер страницы; default и max — config `ledgerpay.pagination` (env LEDGERPAY_*_CURSOR_LIMIT)
+      schema: { type: integer, minimum: 1, maximum: 100, example: 50 }
 
   responses:
     ValidationError:
@@ -737,6 +759,37 @@ components:
         to: { type: integer, nullable: true }
         total: { type: integer }
 
+    CursorPaginationMeta:
+      type: object
+      required: [ per_page, has_more_pages ]
+      properties:
+        per_page: { type: integer, example: 50 }
+        next_cursor: { type: string, nullable: true }
+        prev_cursor: { type: string, nullable: true }
+        has_more_pages: { type: boolean }
+
+    CursorPaginatedTransactionsResponse:
+      type: object
+      required: [ data, meta ]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        meta:
+          $ref: "#/components/schemas/CursorPaginationMeta"
+
+    CursorPaginatedLedgerEntriesResponse:
+      type: object
+      required: [ data, meta ]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+        meta:
+          $ref: "#/components/schemas/CursorPaginationMeta"
+
     PaginatedCustomers:
       type: object
       properties:
@@ -756,30 +809,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Account"
-        links:
-          $ref: "#/components/schemas/PaginationLinks"
-        meta:
-          $ref: "#/components/schemas/PaginationMeta"
-
-    PaginatedTransactions:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/Transaction"
-        links:
-          $ref: "#/components/schemas/PaginationLinks"
-        meta:
-          $ref: "#/components/schemas/PaginationMeta"
-
-    PaginatedLedgerEntries:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/LedgerEntry"
         links:
           $ref: "#/components/schemas/PaginationLinks"
         meta:

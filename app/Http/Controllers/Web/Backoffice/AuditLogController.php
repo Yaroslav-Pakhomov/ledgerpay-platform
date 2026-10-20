@@ -41,8 +41,8 @@ final class AuditLogController extends Controller
             ->with('actor')
             ->when($action !== '', fn ($query) => $query->where('action', $action))
             ->when($requestId !== '', fn ($query) => $query->where('request_id', $requestId))
-            ->latest()
-            ->paginate(50)
+            ->latest('id')
+            ->cursorPaginate(50)
             ->withQueryString() // с учётом фильтров/запроса
             ->through(fn (AuditLog $log) => AuditLogResource::make($log)->resolve());
 

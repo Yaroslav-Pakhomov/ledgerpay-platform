@@ -622,9 +622,9 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 3. **Outbox + типизированные доменные события** — реализован (ADR-006, ADR-009): `transaction.created` / `transaction.completed` / `transaction.failed` / `transaction.retried`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
 4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
 5. **Observability** — Telescope в dev; Horizon для очередей (реализовано, [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)); дальше — metrics/tracing (Prometheus, OpenTelemetry).
-6. **High-load DB** — partitioning `ledger_entries` / audit / outbox, cursor pagination в backoffice (следующий этап после shard queues).
+6. **High-load DB** — cursor pagination (API + backoffice), индексы под `id DESC`, **реализованный cutover pipeline** ([ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](./docs/architecture/partitioning-plan.md), `PartitionCatalog` / `PartitionCutover`, Artisan `partitions:*`). **Следующий шаг в prod** — поэтапный cutover по таблицам на staging, controlled swap; параллельно — снимки балансов, инкрементальная сверка.
 
-**Уже сделано (high-load):** account-sharded transaction queues + Horizon.
+**Уже сделано (high-load):** account-sharded transaction queues + Horizon; cursor pagination и tooling партиционирования (ADR-012, partitioning-plan).
 
 ---
 

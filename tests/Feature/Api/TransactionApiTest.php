@@ -346,8 +346,12 @@ final class TransactionApiTest extends TestCase
                 'data' => [
                     ['uuid', 'type', 'status', 'amount', 'currency'],
                 ],
-                'links',
-                'meta',
+                'meta' => [
+                    'per_page',
+                    'next_cursor',
+                    'prev_cursor',
+                    'has_more_pages',
+                ],
             ]);
     }
 

@@ -169,8 +169,12 @@ final class AccountApiTest extends TestCase
                 'data' => [
                     ['direction', 'amount', 'currency', 'balance_after'],
                 ],
-                'links',
-                'meta',
+                'meta' => [
+                    'per_page',
+                    'next_cursor',
+                    'prev_cursor',
+                    'has_more_pages',
+                ],
             ]);
     }
 

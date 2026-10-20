@@ -36,8 +36,9 @@ final class ReconciliationController extends Controller
         $reports = ReconciliationReport::query()
             ->with(['account.customer'])
             ->when($status !== '', fn ($query) => $query->where('status', $status))
-            ->latest('checked_at')
-            ->paginate(50)
+            ->orderByDesc('checked_at')
+            ->orderByDesc('id')
+            ->cursorPaginate(50)
             ->withQueryString() // с учётом фильтров/запроса
             ->through(fn (ReconciliationReport $report): array => ReconciliationReportResource::make($report)->resolve());
 

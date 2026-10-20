@@ -17,6 +17,7 @@ LedgerPay — компактная fintech-система учёта и движ
 - идемпотентность (idempotency)
 - аудит (audit log)
 - сверка (reconciliation)
+- cursor pagination и план партиционирования append-only таблиц
 
 ## 2. Показать архитектуру
 
@@ -81,13 +82,45 @@ app/Http
 
 Подробнее: [ADR-003](../architecture/adr-003-async-transaction-processing.md), [ADR-011](../architecture/adr-011-account-sharded-transaction-queues.md).
 
-## 6. Показать целостность данных
+## 6. Показать чтение под нагрузкой (cursor pagination + partitioning)
+
+Открыть:
+
+- `app/Http/Requests/Common/CursorPaginatedRequest.php`
+- `app/Http/Requests/Concerns/UsesCursorPagination.php`
+- `app/Support/Pagination/CursorPaginationPayload.php`
+- `app/Http/Controllers/Api/TransactionController.php` (метод `index`)
+- `resources/js/Components/UI/CursorPagination.vue`
+- `docs/architecture/partitioning-plan.md`
+- `app/Console/Partitioning/PartitionCatalog.php`
+- `app/Console/Partitioning/PartitionCutover.php`
+- `app/Console/Commands/CutoverTablePartitionsCommand.php`
+- `app/Console/Commands/EnsureTablePartitionsCommand.php`
+- `routes/console.php` (schedule `partitions:ensure`)
+
+Объяснить:
+
+- offset pagination на больших таблицах дорогая; для списков transactions / ledger / backoffice — **cursor pagination** с сортировкой **`id DESC`** (стабильный порядок для cursor).
+- API: query `cursor`, `limit`; ответ `data` + `meta` (`per_page`, `next_cursor`, `prev_cursor`, `has_more_pages`) — **без** `links` (ломающее изменение для list endpoints).
+- `limit` ограничивается конфигом `ledgerpay.pagination` (`LEDGERPAY_DEFAULT_CURSOR_LIMIT`, `LEDGERPAY_MAX_CURSOR_LIMIT`); завышенный limit **обрезается**, а не 422.
+- backoffice: Inertia + Next/Previous через `prev_page_url` / `next_page_url`.
+- **Партиционирование** в типичном dev **не включено в БД** — в репозитории есть **production runbook + исполняемый pipeline**: shadow `{table}_partitioned`, INSERT-триггер + backfill, validate, swap под lock, затем `partitions:ensure` по cron; staging demo: `partitions:cutover audit_logs --months=3` → `partitions:swap audit_logs --confirm-writes-stopped`; архивирование через `DETACH PARTITION`.
+
+Подробнее: [ADR-012](../architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](../architecture/partitioning-plan.md).
+
+Демо (API, токен backoffice):
+
+- `GET /api/v1/transactions?limit=10`
+- backoffice: `/backoffice/transactions` — листание «Далее» / «Назад»
+
+## 7. Показать целостность данных
 
 Открыть миграции:
 
 - `database/migrations/2026_08_26_125443_add_database_constraints_to_fintech_tables.php`
 - `database/migrations/2026_08_27_063656_add_immutability_triggers_to_ledger_and_audit_logs.php`
 - `database/migrations/2026_08_28_053850_add_fintech_performance_indexes.php`
+- `database/migrations/2026_10_13_050504_add_cursor_pagination_indexes.php`
 
 Объяснить:
 
@@ -95,8 +128,9 @@ app/Http
 - триггер неизменяемости реестра (ledger)
 - триггер неизменяемости аудита (audit)
 - partial indexes (частичные индексы)
+- индексы под cursor pagination (`id DESC`, `ledger_entries (account_id, id DESC)`)
 
-## 7. Показать outbox
+## 8. Показать outbox
 
 Открыть:
 
@@ -110,7 +144,7 @@ app/Http
 - publisher позже можно заменить на Kafka / SNS / RabbitMQ
 - при `KAFKA_ENABLED=true` — опционально Redpanda/Kafka (локальный demo)
 
-## 8. Показать сверку
+## 9. Показать сверку
 
 Открыть:
 
@@ -122,7 +156,7 @@ app/Http
 - отчёты о расхождении помогают расследованию
 - плановая сверка: `reconciliation:run`, scheduler, UI backoffice
 
-## 9. Показать безопасность
+## 10. Показать безопасность
 
 Открыть:
 
@@ -139,7 +173,7 @@ app/Http
 - security headers
 - ошибки Problem Details без «утечки» внутренностей
 
-## 10. Показать observability (наблюдаемость)
+## 11. Показать observability (наблюдаемость)
 
 Открыть:
 
@@ -155,11 +189,11 @@ app/Http
 - страница диагностики: `/backoffice/diagnostics`
 - мониторинг очередей: `/horizon` (backoffice)
 
-## 11. Показать тесты
+## 12. Показать тесты
 
 Открыть:
 
-`tests/Feature` и `tests/Concurrency`
+`tests/Feature`, `tests/Feature/Partitioning`, `tests/Unit/Partitioning` и `tests/Concurrency`
 
 Выделить:
 
@@ -173,6 +207,10 @@ app/Http
 - диагностика — `DiagnosticsTest`
 - маршрутизация shard-очередей — `TransactionQueueRoutingTest`
 - **конкурентность (несколько PHP-процессов, PostgreSQL)** — `tests/Concurrency/TransactionConcurrencyTest`: параллельные списания, встречные переводы, гонка ключа идемпотентности
+- cursor pagination API — `CursorPaginationTest`
+- каталог партиций — `tests/Unit/Partitioning/PartitionCatalogTest`: четыре таблицы, отказ для неизвестной, мутабелен только outbox
+- команды `partitions:*` — `tests/Feature/Partitioning/TablePartitionsCommandTest`: неизвестная таблица, swap требует `--confirm-writes-stopped`
+- cutover — `tests/Feature/Partitioning/PartitionCutoverTest`: prepare/backfill/validate, cutover без rename, sync outbox, сумма amount, swap и ensure; runbook [partitioning-plan.md](../architecture/partitioning-plan.md)
 
 ## Завершение (рекомендуемая формулировка)
 

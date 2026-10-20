@@ -36,8 +36,8 @@ final class OutboxController extends Controller
         $messages = OutboxMessage::query()
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($eventName !== '', fn ($query) => $query->where('event_name', $eventName))
-            ->latest()
-            ->paginate(50)
+            ->latest('id')
+            ->cursorPaginate(50)
             ->withQueryString()
             ->through(fn (OutboxMessage $message) => [
                 'uuid'           => $message->uuid,

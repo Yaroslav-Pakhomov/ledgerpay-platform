@@ -10,8 +10,10 @@ use App\Domain\Account\Models\Account;
 use App\Domain\Customer\Models\Customer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\StoreAccountRequest;
+use App\Http\Requests\Common\CursorPaginatedRequest;
 use App\Http\Resources\Account\Api\AccountResource;
 use App\Http\Resources\LedgerEntry\LedgerEntryResource;
+use App\Support\Pagination\CursorPaginationPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response as ResponseAlias;
@@ -22,27 +24,18 @@ class AccountController extends Controller
     {
         $this->authorize('viewAny', Account::class);
 
-        $accounts = Account::query()
-            ->with('customer')
-            ->latest()
-            ->paginate(20);
+        $accounts = Account::query()->with('customer')->latest()->paginate(20);
 
         return AccountResource::collection($accounts);
     }
 
-    public function store(
-        StoreAccountRequest $request,
-        AccountService $service,
-    ): JsonResponse {
+    public function store(StoreAccountRequest $request, AccountService $service): JsonResponse
+    {
         $this->authorize('create', Account::class);
 
         $user = $request->user();
 
-        if ($user->isBackOffice()) {
-            $customer = Customer::query()->where('uuid', $request->string('customer_uuid')->toString())->firstOrFail();
-        } else {
-            $customer = $user->customer;
-        }
+        $customer = $user->isBackOffice() ? Customer::query()->where('uuid', $request->string('customer_uuid')->toString())->firstOrFail() : $user->customer;
 
         if (!$customer instanceof Customer) {
             abort(ResponseAlias::HTTP_UNPROCESSABLE_ENTITY, 'Customer not found.');
@@ -62,10 +55,7 @@ class AccountController extends Controller
 
     public function show(string $uuid): AccountResource
     {
-        $account = Account::query()
-            ->with('customer')
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $account = Account::query()->with('customer')->where('uuid', $uuid)->firstOrFail();
 
         $this->authorize('view', $account);
 
@@ -74,9 +64,7 @@ class AccountController extends Controller
 
     public function balance(string $uuid): JsonResponse
     {
-        $account = Account::query()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $account = Account::query()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $account);
 
         return response()->json([
@@ -86,18 +74,18 @@ class AccountController extends Controller
         ]);
     }
 
-    public function ledger(string $uuid): AnonymousResourceCollection
+    public function ledger(string $uuid, CursorPaginatedRequest $request): JsonResponse
     {
-        $account = Account::query()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $account = Account::query()->where('uuid', $uuid)->firstOrFail();
         $this->authorize('view', $account);
 
-        $entries = $account->ledgerEntries()
-            ->with(['transaction', 'account'])
-            ->latest()
-            ->paginate(50);
+        $entries = $account->ledgerEntries()->with(['transaction', 'account'])->latest('id')->cursorPaginate($request->cursorLimit());
 
-        return LedgerEntryResource::collection($entries);
+        return response()->json(
+            CursorPaginationPayload::from(
+                paginator: $entries,
+                data: LedgerEntryResource::collection($entries->items())->resolve()
+            )
+        );
     }
 }

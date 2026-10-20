@@ -4,8 +4,8 @@ import { Link, router, useForm } from '@inertiajs/vue3';
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
-import Pagination from '@/Components/UI/Pagination.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
+import CursorPagination from "@/Components/UI/CursorPagination.vue";
 
 defineOptions({
     layout: AppLayout,
@@ -145,7 +145,11 @@ function runForAccount(accountUuid) {
 
                     </tbody>
                 </table>
-                <Pagination :links="reports.links" />
+
+                <CursorPagination
+                    :prev-page-url="reports.prev_page_url"
+                    :next-page-url="reports.next_page_url"
+                />
             </div>
         </section>
     </div>

@@ -39,8 +39,8 @@ final class TransactionController extends Controller
             // Применяем фильтр по типу транзакции,
             // только если значение было передано в запросе.
             ->when($type !== '', fn ($query) => $query->where('type', $type))
-            ->latest()
-            ->paginate(50)
+            ->latest('id')
+            ->cursorPaginate(50)
             // Сохраняет status/type при переходе на страницу 2
             ->withQueryString()
             // Преобразуем модели внутри пагинатора в массивы,
