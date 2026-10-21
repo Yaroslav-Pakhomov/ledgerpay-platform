@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Link, router, useForm } from '@inertiajs/vue3';
+import {Link, router, useForm} from '@inertiajs/vue3';
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
@@ -9,7 +9,7 @@ import CursorPagination from "@/Components/UI/CursorPagination.vue";
 
 defineOptions({
     layout: AppLayout,
-    name: 'BackofficeReconciliation',
+    name  : 'BackofficeReconciliation',
 });
 
 const props = defineProps({
@@ -26,7 +26,7 @@ function applyFilters() {
         status: filterForm.status,
     }, {
         preserveState: true,
-        replace: true,
+        replace      : true,
     });
 }
 
@@ -45,28 +45,22 @@ function runForAccount(accountUuid) {
 
 <template>
     <div class="space-y-8">
-        <section class="flex items-start justify-between gap-4">
-            <div>
-                <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
-                    ← Бэк-офис
-                </Link>
-            </div>
+        <div>
+            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
+                ← Бэк-офис
+            </Link>
+        </div>
 
-            <PageHeader
-                title="Сверка балансов"
-                description="Сравнение сохранённых балансов с балансами, восстановленными из неизменяемого реестра."
-            >
-                <template #actions>
-                    <button class="btn" type="button" @click="runReconciliation">
-                        Запустить сейчас
-                    </button>
-                </template>
-            </PageHeader>
-
-            <button class="btn" @click="runReconciliation">
-                Запустить сейчас
-            </button>
-        </section>
+        <PageHeader
+            title="Сверка балансов"
+            description="Сравнение сохранённых балансов с балансами, восстановленными из неизменяемого реестра."
+        >
+            <template #actions>
+                <button class="btn" type="button" @click="runReconciliation">
+                    Запустить сейчас
+                </button>
+            </template>
+        </PageHeader>
 
         <section class="card">
             <form class="grid gap-4 md:grid-cols-3" @submit.prevent="applyFilters">
@@ -118,18 +112,22 @@ function runForAccount(accountUuid) {
                         <td class="py-3">{{ report.checked_at }}</td>
                         <td class="font-mono text-xs">{{ report.account_uuid }}</td>
                         <td>{{ report.customer_email ?? '—' }}</td>
-                        <td><MoneyAmount :amount="report.account_balance" :currency="report.currency" /></td>
-                        <td><MoneyAmount :amount="report.ledger_balance" :currency="report.currency" /></td>
+                        <td>
+                            <MoneyAmount :amount="report.account_balance" :currency="report.currency"/>
+                        </td>
+                        <td>
+                            <MoneyAmount :amount="report.ledger_balance" :currency="report.currency"/>
+                        </td>
                         <td
                             :class="{
                                     'text-green-300': report.difference === 0,
                                     'text-red-300': report.difference !== 0,
                                 }"
                         >
-                            <MoneyAmount :amount="report.difference" :currency="report.currency" />
+                            <MoneyAmount :amount="report.difference" :currency="report.currency"/>
                         </td>
                         <td>
-                            <StatusBadge :status="report.status" />
+                            <StatusBadge :status="report.status"/>
                         </td>
                         <td>
                             <button

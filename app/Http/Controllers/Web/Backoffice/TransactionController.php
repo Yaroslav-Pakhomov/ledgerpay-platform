@@ -29,7 +29,7 @@ final class TransactionController extends Controller
         $type   = $request->string('type')->toString();
 
         // Формируем выборку транзакций.
-        $transactions = Transaction::query()
+        $transactionsPaginator = Transaction::query()
             // Загружаем исходный и целевой счета вместе с их владельцами,
             // чтобы избежать проблемы N+1 запросов.
             ->with(['sourceAccount.customer', 'targetAccount.customer'])
@@ -42,10 +42,14 @@ final class TransactionController extends Controller
             ->latest('id')
             ->cursorPaginate(50)
             // Сохраняет status/type при переходе на страницу 2
-            ->withQueryString()
-            // Преобразуем модели внутри пагинатора в массивы,
-            // содержащие только необходимые интерфейсу данные.
-            ->through(fn (Transaction $transaction) => TransactionResource::make($transaction)->resolve());
+            ->withQueryString();
+
+        // Преобразуем модели внутри пагинатора в массивы,
+        // содержащие только необходимые интерфейсу данные.
+        $transactions         = $transactionsPaginator->toArray();
+        $transactions['data'] = TransactionResource::collection(
+            $transactionsPaginator->items()
+        )->resolve();
 
         return inertia('Backoffice/Transactions', [
             'filters' => [

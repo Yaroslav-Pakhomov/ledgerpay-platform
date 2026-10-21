@@ -33,13 +33,16 @@ final class OutboxController extends Controller
         $status    = $request->string('status')->toString();
         $eventName = $request->string('event_name')->toString();
 
-        $messages = OutboxMessage::query()
+        $messagesPaginator = OutboxMessage::query()
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($eventName !== '', fn ($query) => $query->where('event_name', $eventName))
             ->latest('id')
             ->cursorPaginate(50)
-            ->withQueryString()
-            ->through(fn (OutboxMessage $message) => [
+            ->withQueryString();
+
+        $messages         = $messagesPaginator->toArray();
+        $messages['data'] = collect($messagesPaginator->items())
+            ->map(fn (OutboxMessage $message): array => [
                 'uuid'           => $message->uuid,
                 'event_name'     => $message->event_name,
                 'aggregate_type' => $message->aggregate_type,
@@ -52,7 +55,8 @@ final class OutboxController extends Controller
                 'available_at'   => $message->available_at?->toDateTimeString(),
                 'published_at'   => $message->published_at?->toDateTimeString(),
                 'created_at'     => $message->created_at->toDateTimeString(),
-            ]);
+            ])
+            ->all();
 
         return inertia('Backoffice/Outbox', [
             'filters' => [

@@ -37,14 +37,18 @@ final class AuditLogController extends Controller
         $action    = $request->string('action')->toString();
         $requestId = $request->string('request_id')->toString();
 
-        $logs = AuditLog::query()
+        $logsPaginator = AuditLog::query()
             ->with('actor')
             ->when($action !== '', fn ($query) => $query->where('action', $action))
             ->when($requestId !== '', fn ($query) => $query->where('request_id', $requestId))
             ->latest('id')
             ->cursorPaginate(50)
-            ->withQueryString() // с учётом фильтров/запроса
-            ->through(fn (AuditLog $log) => AuditLogResource::make($log)->resolve());
+            ->withQueryString(); // с учётом фильтров/запроса
+
+        $logs         = $logsPaginator->toArray();
+        $logs['data'] = AuditLogResource::collection(
+            $logsPaginator->items()
+        )->resolve();
 
         return inertia('Backoffice/AuditLogs', [
             'filters' => [
