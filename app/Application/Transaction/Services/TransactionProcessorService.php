@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Transaction\Services;
 
 use App\Application\Ledger\Services\LedgerService;
+use App\Application\Ledger\Snapshots\Services\BalanceSnapshotService;
 use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Domain\Account\Models\Account;
@@ -33,7 +34,8 @@ use Throwable;
  * - перевести транзакцию в итоговый статус.
  *
  * Все денежные операции выполняются внутри DB transaction,
- * чтобы изменение баланса, создание ledger-записей, запись outbox-события
+ * чтобы изменение баланса, создание ledger-записей, при необходимости снимок баланса
+ * ({@see BalanceSnapshotService::createIfNeeded()}), запись outbox-события
  * {@see TransactionCompleted} и смена статуса происходили как единое атомарное действие.
  *
  * Терминальный сбой обработки ({@see TransactionFailed}) фиксируется через
@@ -45,6 +47,7 @@ final readonly class TransactionProcessorService
         private LedgerService $ledger,
         private TransferPolicy $transferPolicy,
         private OutboxWriterService $outboxWriter,
+        private BalanceSnapshotService $snapshots,
     ) {}
 
     /**
@@ -101,11 +104,13 @@ final readonly class TransactionProcessorService
             /**
              * Ledger фиксирует факт зачисления и баланс после операции.
              */
-            $this->ledger->credit(
+            $entry = $this->ledger->credit(
                 transaction: $transaction,
                 account: $target,
                 amount: $transaction->amount,
             );
+
+            $this->snapshots->createIfNeeded($target, $entry);
 
             $transaction->update([
                 'status'         => TransactionStatus::Completed,
@@ -145,11 +150,13 @@ final readonly class TransactionProcessorService
             $source->debit($transaction->amount, $transaction->currency);
             $source->save();
 
-            $this->ledger->debit(
+            $entry = $this->ledger->debit(
                 transaction: $transaction,
                 account: $source,
                 amount: $transaction->amount,
             );
+
+            $this->snapshots->createIfNeeded($source, $entry);
 
             $transaction->update([
                 'status'         => TransactionStatus::Completed,
@@ -216,17 +223,20 @@ final readonly class TransactionProcessorService
             $source->save();
             $target->save();
 
-            $this->ledger->debit(
+            $sourceEntry = $this->ledger->debit(
                 transaction: $transaction,
                 account: $source,
                 amount: $transaction->amount,
             );
 
-            $this->ledger->credit(
+            $targetEntry = $this->ledger->credit(
                 transaction: $transaction,
                 account: $target,
                 amount: $transaction->amount,
             );
+
+            $this->snapshots->createIfNeeded($source, $sourceEntry);
+            $this->snapshots->createIfNeeded($target, $targetEntry);
 
             $transaction->update([
                 'status'         => TransactionStatus::Completed,

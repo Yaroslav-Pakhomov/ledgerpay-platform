@@ -1063,6 +1063,21 @@ LedgerPay периодически сравнивает сохранённые �
 
 Подробнее: [ADR-007](./docs/architecture/adr-007-reconciliation.md).
 
+### Снимки баланса
+
+LedgerPay может сохранять снимки баланса счетов, чтобы ускорить сверку.
+
+Вместо полного пересчёта реестра при каждом запуске сверка опирается на последний снимок и учитывает только новые проводки после него.
+
+Подробнее: [ADR-013](./docs/architecture/adr-013-balance-snapshots-incremental-reconciliation.md).
+
+Планировщик создаёт снимки для партии счетов (`ledger:snapshot-balances --limit=1000`, hourly).
+Backoffice: `/backoffice/balance-snapshots`.
+
+```bash
+./vendor/bin/sail artisan ledger:snapshot-balances --force
+```
+
 ### Защита от злоупотреблений
 
 LedgerPay использует ограничения скорости для конкретных запросов:

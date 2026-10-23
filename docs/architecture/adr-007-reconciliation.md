@@ -28,6 +28,8 @@ FK `account_id → accounts.id` с `ON DELETE RESTRICT`: счёт, у котор
 
 Запуск: Artisan `reconciliation:run`, планировщик (ежечасно), UI бэк-офиса.
 
+При большом объёме проводок полный пересчёт дополняется поэтапной стратегией через снимки баланса — см. [ADR-013](./adr-013-balance-snapshots-incremental-reconciliation.md).
+
 ## Последствия
 
 Плюсы:

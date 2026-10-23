@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\Backoffice\AuditLogController as BackofficeAuditLogController;
+use App\Http\Controllers\Web\Backoffice\BalanceSnapshotController;
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
 use App\Http\Controllers\Web\Backoffice\DiagnosticsController;
@@ -93,6 +94,8 @@ Route::middleware('auth')->group(function (): void {
         Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
 
         Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
+
+        Route::get('/balance-snapshots', [BalanceSnapshotController::class, 'index'])->name('balance-snapshots.index');
 
         Route::middleware('throttle:backoffice-heavy')->controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
             // Страница отчётов сверки

@@ -10,6 +10,7 @@ use App\Domain\Account\Exceptions\InactiveAccountException;
 use App\Domain\Account\Exceptions\InsufficientFundsException;
 use App\Domain\Customer\Models\Customer;
 use App\Domain\Ledger\Models\LedgerEntry;
+use App\Domain\Ledger\Snapshots\Models\AccountBalanceSnapshot;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -157,6 +158,16 @@ final class Account extends Model
     public function ledgerEntries(): HasMany
     {
         return $this->hasMany(LedgerEntry::class, 'account_id', 'id');
+    }
+
+    /**
+     * Неизменяемые снимки баланса для поэтапной сверки.
+     *
+     * @return HasMany<AccountBalanceSnapshot, $this>
+     */
+    public function balanceSnapshots(): HasMany
+    {
+        return $this->hasMany(AccountBalanceSnapshot::class, 'account_id', 'id');
     }
 
     /**

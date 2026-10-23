@@ -32,4 +32,17 @@ return [
         'default_limit' => (int) env('LEDGERPAY_DEFAULT_CURSOR_LIMIT', 50),
         'max_limit'     => (int) env('LEDGERPAY_MAX_CURSOR_LIMIT', 100),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Снимки баланса
+    |--------------------------------------------------------------------------
+    |
+    | После каждых N проводок с момента последнего снимка создаётся новая запись
+    | account_balance_snapshots (см. BalanceSnapshotService, ADR-013).
+    |
+    */
+    'snapshots' => [
+        'every_ledger_entries' => (int) env('LEDGERPAY_SNAPSHOT_EVERY_LEDGER_ENTRIES', 100),
+    ],
 ];

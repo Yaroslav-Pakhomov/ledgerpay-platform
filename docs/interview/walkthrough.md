@@ -155,6 +155,8 @@ app/Http
 - `accounts.balance` сравнивается с балансом из ledger
 - отчёты о расхождении помогают расследованию
 - плановая сверка: `reconciliation:run`, scheduler, UI backoffice
+- при длинной истории: последний снимок + delta (`metadata.strategy`: `snapshot_incremental` / `full_ledger_scan`)
+- снимки: `BalanceSnapshotService`, `account_balance_snapshots`, CLI `ledger:snapshot-balances`, backoffice `/backoffice/balance-snapshots`, [ADR-013](../architecture/adr-013-balance-snapshots-incremental-reconciliation.md)
 
 ## 10. Показать безопасность
 
@@ -204,6 +206,7 @@ app/Http
 - авторизация — `BackofficeAccessTest`
 - outbox — `OutboxPatternTest`
 - сверка — `ReconciliationTest`
+- снимки баланса и инкремент сверки — `BalanceSnapshotsTest`
 - диагностика — `DiagnosticsTest`
 - маршрутизация shard-очередей — `TransactionQueueRoutingTest`
 - **конкурентность (несколько PHP-процессов, PostgreSQL)** — `tests/Concurrency/TransactionConcurrencyTest`: параллельные списания, встречные переводы, гонка ключа идемпотентности

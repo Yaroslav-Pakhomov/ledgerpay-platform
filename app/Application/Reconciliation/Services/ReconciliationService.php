@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Reconciliation\Services;
 
+use App\Application\Ledger\Snapshots\Services\BalanceSnapshotService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Ledger\Enums\LedgerDirection;
+use App\Domain\Ledger\Snapshots\Models\AccountBalanceSnapshot;
 use App\Domain\Reconciliation\Enums\ReconciliationStatus;
 use App\Domain\Reconciliation\Models\ReconciliationReport;
 use Illuminate\Support\Collection;
@@ -14,26 +16,49 @@ use Throwable;
 /**
  * Сервис приложения сверки балансов счетов с неизменным реестром.
  *
- * Для каждого счёта восстанавливает баланс:
- * `ledger_balance = sum(credits) − sum(debits)` и сравнивает с `accounts.balance`.
- * Результат сохраняется в {@see ReconciliationReport} (только чтение, без автокоррекции).
+ * При наличии снимка: база из последнего {@see AccountBalanceSnapshot}
+ * плюс сумма проводок после `ledger_entry_id` снимка.
+ * Без снимка — полный пересчёт по всем проводкам счёта.
+ *
+ * Стратегия фиксируется в metadata отчёта (`full_ledger_scan` / `snapshot_incremental`).
+ * Результат — append-only {@see ReconciliationReport} (без автокоррекции баланса).
  */
-final class ReconciliationService
+final readonly class ReconciliationService
 {
+    public function __construct(
+        private BalanceSnapshotService $snapshotService,
+    ) {}
+
     /**
      * Сверяет один счёт и создаёт отчёт.
+     *
+     * Metadata: `strategy`, `snapshot_uuid`, `ledger_delta`, …
      *
      * @throws Throwable при ошибке записи в БД
      */
     public function checkAccount(Account $account): ReconciliationReport
     {
+        $snapshot = $this->snapshotService->latestForAccount($account);
+
+        $ledgerQuery = $account->ledgerEntries();
+
+        $baseBalance       = 0;
+        $fromLedgerEntryId = null;
+
+        if ($snapshot !== null) {
+            $baseBalance       = $snapshot->balance;
+            $fromLedgerEntryId = $snapshot->ledger_entry_id;
+
+            if ($fromLedgerEntryId !== null) {
+                $ledgerQuery->where('id', '>', $fromLedgerEntryId);
+            }
+        }
+
         /**
-         * Баланс реестра восстанавливаем из всех проводок:
+         * Delta по проводкам (все или только после снимка):
          * credit увеличивает баланс, debit уменьшает.
-         *
-         * Это независимая сверка против accounts.balance.
          */
-        $ledgerStats = $account->ledgerEntries()
+        $ledgerDelta = (int) $ledgerQuery
             ->selectRaw('
                 COALESCE(SUM(
                     CASE
@@ -41,18 +66,15 @@ final class ReconciliationService
                         WHEN direction = ? THEN -amount
                         ELSE 0
                     END
-                ), 0) as calculated_balance,
-                COUNT(*) as entries_count
+                ), 0) as calculated_delta
             ', [
                 LedgerDirection::Credit->value,
                 LedgerDirection::Debit->value,
             ])
-            ->first();
+            ->value('calculated_delta');
 
-        $ledgerBalance = (int) ($ledgerStats->calculated_balance ?? 0);
-        $entriesCount  = (int) ($ledgerStats->entries_count ?? 0);
-
-        $difference = $account->balance - $ledgerBalance;
+        $ledgerBalance = $baseBalance + $ledgerDelta;
+        $difference    = $account->balance - $ledgerBalance;
 
         $status = $difference === 0 ? ReconciliationStatus::Matched : ReconciliationStatus::Mismatched;
 
@@ -66,7 +88,11 @@ final class ReconciliationService
             'checked_at'      => now(),
             'metadata'        => [
                 'account_uuid'         => $account->uuid,
-                'ledger_entries_count' => $entriesCount,
+                'strategy'             => $snapshot === null ? 'full_ledger_scan' : 'snapshot_incremental',
+                'snapshot_uuid'        => $snapshot?->uuid,
+                'snapshot_balance'     => $snapshot?->balance,
+                'from_ledger_entry_id' => $fromLedgerEntryId,
+                'ledger_delta'         => $ledgerDelta,
             ],
         ]);
     }

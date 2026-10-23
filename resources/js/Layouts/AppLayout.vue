@@ -62,6 +62,14 @@ function logout() {
                     </Link>
 
                     <Link
+                        v-if="page.props.auth.user?.is_backoffice"
+                        :href="route('backoffice.balance-snapshots.index')"
+                        class="text-gray-300 hover:text-white"
+                    >
+                        Снимки баланса
+                    </Link>
+
+                    <Link
                         :href="route('profile.edit')"
                         class="text-gray-300 hover:text-white"
                     >
