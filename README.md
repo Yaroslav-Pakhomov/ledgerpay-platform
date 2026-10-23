@@ -17,7 +17,7 @@ LedgerPay — backend-система для работы с клиентами, 
 * API-контракты;
 * автоматическое тестирование и статический анализ.
 
-> LedgerPay — portfolio-проект, а не production-платёжная система.
+> LedgerPay — учебный проект для портфолио, а не боевая платёжная система.
 
 > Его цель — демонстрация инженерных подходов к проектированию backend-систем.
 
@@ -238,7 +238,7 @@ Idempotency-Key: transfer-123
 
 На уровне БД используется ограничение по уникальности (unique constraint) для `idempotency_key`.
 
-При создании задаётся срок действия ключа (`idempotency_expires_at`, TTL — `LEDGERPAY_IDEMPOTENCY_TTL_HOURS`, по умолчанию 24 ч). Для завершённых транзакций истёкшие ключи очищает команда `idempotency:prune-expired` (в scheduler — ежедневно). Подробнее: [ADR-004](./docs/architecture/adr-004-idempotency.md).
+При создании задаётся срок действия ключа (`idempotency_expires_at`, TTL — `LEDGERPAY_IDEMPOTENCY_TTL_HOURS`, по умолчанию 24 ч). Для завершённых транзакций истёкшие ключи очищает команда `idempotency:prune-expired` (планировщик запускает её ежедневно). Подробнее: [ADR-004](./docs/architecture/adr-004-idempotency.md).
 
 Первое создание — **HTTP 201**, idempotent replay — **200**.
 
@@ -677,7 +677,7 @@ make ci                # Sail: lint + test + frontend build
 
 GitHub Actions запускается для push и pull request в `develop`, `master`, `feature/**`.
 
-Pipeline включает:
+Последовательность этапов включает:
 
 ```text
 Composer + npm ci
@@ -746,7 +746,7 @@ composer install
 
 ### Queue Worker (Horizon)
 
-Транзакции обрабатываются через Redis Queue; workers управляются **Laravel Horizon**.
+Транзакции обрабатываются через очередь Redis; обработчиками управляет **Laravel Horizon**.
 
 Запуск:
 
@@ -768,7 +768,7 @@ make horizon-terminate
 
 Подробнее: [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md).
 
-Для outbox и сверки нужен scheduler:
+Для исходящих сообщений и сверки нужен планировщик:
 
 ```bash
 ./vendor/bin/sail artisan schedule:work
@@ -807,17 +807,17 @@ Shard: `account_id % LEDGERPAY_TRANSACTION_QUEUE_SHARDS` (см. `.env.example`).
 
 ---
 
-### Cursor pagination
+### Курсорная пагинация
 
-Для списков с большим объёмом данных используется **cursor pagination** вместо offset pagination.
+Для списков с большим объёмом данных используется **курсорная пагинация** вместо пагинации со смещением.
 
-Таблицы: transactions, ledger entries, audit logs, outbox messages, reconciliation reports.
+Таблицы: транзакции, проводки реестра, журнал аудита, исходящие сообщения и отчёты сверки.
 
-Query-параметры API: `cursor`, `limit` (см. `LEDGERPAY_DEFAULT_CURSOR_LIMIT`, `LEDGERPAY_MAX_CURSOR_LIMIT`).
+Параметры запроса API: `cursor`, `limit` (см. `LEDGERPAY_DEFAULT_CURSOR_LIMIT`, `LEDGERPAY_MAX_CURSOR_LIMIT`).
 
 ### Стратегия партиционирования
 
-Append-only таблицы переводятся на **range partitioning** PostgreSQL по `created_at` через shadow-миграцию (`{table}_partitioned` → swap).
+Таблицы, в которые данные только добавляются, переводятся на **партиционирование по диапазонам** PostgreSQL по `created_at` через теневую таблицу (`{table}_partitioned` → стадия `swap`).
 
 Подготовка и сверка:
 
@@ -825,7 +825,20 @@ Append-only таблицы переводятся на **range partitioning** Po
 ./vendor/bin/sail artisan partitions:cutover ledger_entries --from=2026-05 --months=12
 ```
 
-Переключение (окно обслуживания): `partitions:swap ledger_entries --confirm-writes-stopped`. Новые месяцы: `partitions:ensure ledger_entries --months=2`.
+Переключение выполняется в окно обслуживания после остановки всех источников записи, включая Horizon и планировщик:
+
+```bash
+./vendor/bin/sail artisan down --retry=60
+./vendor/bin/sail artisan horizon:pause
+# остановить schedule:work или временно отключить cron/CronJob schedule:run
+# дождаться завершения активных jobs
+./vendor/bin/sail artisan partitions:swap ledger_entries --confirm-writes-stopped
+./vendor/bin/sail artisan partitions:ensure ledger_entries --months=2
+./vendor/bin/sail artisan horizon:continue
+./vendor/bin/sail artisan up
+```
+
+`sail up -d` запускает Docker-контейнеры; `sail artisan up` только выключает режим обслуживания Laravel. Полный порядок действий, варианты остановки обработчиков в боевом окружении и откат описаны в эксплуатационной инструкции.
 
 Таблицы: `ledger_entries`, `audit_logs`, `outbox_messages`, `reconciliation_reports`.
 
@@ -853,7 +866,7 @@ Swagger UI:
 
 http://localhost/api/docs
 
-В production API documentation рекомендуется отключать:
+В боевом окружении документацию API рекомендуется отключать:
 
 ```env
 API_DOCS_ENABLED=false
@@ -1003,7 +1016,7 @@ LedgerPay записывает доменные события в `outbox_messag
 - `transaction.retried` — повторная постановка Failed → Pending (ручной retry);
 - `transaction.failed` — терминальный сбой после retry.
 
-Отдельная команда отправляет (dispatch) pending-сообщения в queue workers.
+Отдельная команда передаёт ожидающие сообщения обработчикам очереди.
 
 Это предотвращает классическую проблему: DB commit успешен, а публикация события — нет.
 
@@ -1031,7 +1044,7 @@ make kafka-topic
 
 **Redpanda Console:** http://localhost:8081
 
-**Smoke test:**
+**Проверка работоспособности:**
 
 ```bash
 make worker

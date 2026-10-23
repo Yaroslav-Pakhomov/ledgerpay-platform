@@ -16,11 +16,15 @@ use App\Domain\Transaction\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Throwable;
 
 final class ReconciliationTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @throws Throwable
+     */
     public function test_reconciliation_matches_account_balance_against_ledger(): void
     {
         $account = Account::factory()
