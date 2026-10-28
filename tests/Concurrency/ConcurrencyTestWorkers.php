@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Concurrency;
 
+use App\Application\Audit\Services\AuditLoggerService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
@@ -97,7 +99,11 @@ final class ConcurrencyTestWorkers
     {
         try {
             $job = new ProcessTransactionJob($transactionId);
-            $job->handle(app(TransactionProcessorService::class));
+            $job->handle(
+                app(TransactionProcessorService::class),
+                app(ReadModelProjectionService::class),
+                app(AuditLoggerService::class),
+            );
 
             return ['ok' => true];
         } catch (Throwable $exception) {

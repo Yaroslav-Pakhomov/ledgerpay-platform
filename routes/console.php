@@ -32,3 +32,6 @@ Schedule::command('partitions:ensure reconciliation_reports --months=2')->daily(
 
 // Снимок проводок делать каждый час
 Schedule::command('ledger:snapshot-balances --limit=1000')->hourly()->withoutOverlapping();
+
+// Пересборка проекций счетов и операций
+Schedule::command('read-models:rebuild --chunk=1000')->dailyAt('03:00')->withoutOverlapping();

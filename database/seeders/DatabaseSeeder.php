@@ -20,6 +20,7 @@ final class DatabaseSeeder extends Seeder
         $this->call([
             BackofficeUserSeeder::class,
             DemoDataSeeder::class,
+            ReadModelsSeeder::class,
         ]);
         $this->command->info('Пользователь бэк-офиса заполнен!');
         $this->command->info('Демо-данные заполнены!');

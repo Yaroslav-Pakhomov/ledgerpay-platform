@@ -44,10 +44,20 @@ final class ExplainQueryCommand extends Command
             return self::FAILURE;
         }
 
+        $rawConnection = $this->option('connection');
+
+        if ($rawConnection !== null && !is_string($rawConnection)) {
+            $this->components->error('Опция --connection должна быть строкой (имя из config/database.php).');
+
+            return self::FAILURE;
+        }
+
+        $connection = is_string($rawConnection) && $rawConnection !== '' ? $rawConnection : null;
+
         try {
             $plan = $this->option('analyze')
-                ? QueryPlanInspector::explainAnalyze($sql, connection: $this->option('connection'))
-                : QueryPlanInspector::explain($sql, connection: $this->option('connection'));
+                ? QueryPlanInspector::explainAnalyze($sql, connection: $connection)
+                : QueryPlanInspector::explain($sql, connection: $connection);
         } catch (Throwable $exception) {
             $this->components->error($exception->getMessage());
 

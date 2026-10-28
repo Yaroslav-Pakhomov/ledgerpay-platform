@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Transaction\Jobs;
 
 use App\Application\Audit\Services\AuditLoggerService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Enums\TransactionStatus;
@@ -69,7 +70,7 @@ final class ProcessTransactionJob implements ShouldQueue
      *
      * @throws Throwable
      */
-    public function handle(TransactionProcessorService $transactionProcessor): void
+    public function handle(TransactionProcessorService $transactionProcessor, ReadModelProjectionService $projectionService, AuditLoggerService $auditService): void
     {
         Log::info('Transaction processing started.', [
             'transaction_id' => $this->transactionId,
@@ -95,8 +96,10 @@ final class ProcessTransactionJob implements ShouldQueue
 
         $processed = $transactionProcessor->process($transaction);
 
+        $projectionService->projectTransactionAndAccounts($processed);
+
         // Audit: TransactionCompleted — без HTTP context, actor_user_id = null.
-        app(AuditLoggerService::class)->log(
+        $auditService->log(
             auditAction: AuditAction::TransactionCompleted,
             entity: $processed,
             metadata: [
@@ -146,6 +149,8 @@ final class ProcessTransactionJob implements ShouldQueue
                 'message'         => $exception->getMessage(),
             ],
         );
+
+        app(ReadModelProjectionService::class)->projectTransactionAndAccounts($failedTransaction);
 
         Log::error('Transaction processing failed.', [
             'transaction_id'  => $this->transactionId,

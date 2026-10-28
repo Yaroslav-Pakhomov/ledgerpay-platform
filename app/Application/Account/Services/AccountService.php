@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Account\Services;
 
 use App\Application\Account\DTO\CreateAccountData;
+use App\Application\ReadModel\Projectors\AccountSummaryProjector;
 use App\Domain\Account\Enums\AccountStatus;
 use App\Domain\Account\Models\Account;
 use App\Domain\Customer\Exceptions\InactiveCustomerException;
@@ -29,6 +30,10 @@ use App\Domain\Customer\Models\Customer;
  */
 final class AccountService
 {
+    public function __construct(
+        private readonly AccountSummaryProjector $accountProjector,
+    ) {}
+
     public function create(CreateAccountData $data): Account
     {
         $customer = Customer::query()->where('uuid', $data->customerUuid)->firstOrFail();
@@ -37,11 +42,15 @@ final class AccountService
             throw new InactiveCustomerException;
         }
 
-        return Account::query()->create([
+        $account = Account::query()->create([
             'customer_id' => $customer->id,
             'currency'    => strtoupper($data->currency),
             'balance'     => 0,
             'status'      => AccountStatus::Active,
         ]);
+
+        $this->accountProjector->project($account);
+
+        return $account;
     }
 }

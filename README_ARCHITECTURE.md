@@ -598,7 +598,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 |------------|-----------------|---------------------|
 | **Event Sourcing** | История хранится как поток событий, состояние — их проекция; удобно для аудита и replay (событийное хранение состояния)| Избыточно на текущем масштабе; `ledger_entries` + `audit_logs` уже дают audit trail |
 | **Repository interfaces** | Абстракция доступа к БД поверх ORM; «чистый» DDD | Eloquent достаточно; меньше boilerplate, модели уже в Domain |
-| **CQRS** | Разные модели для записи и чтения (command vs query) | Read-сценарии простые (списки, выписки); усложнение не окупается |
+| **CQRS (полный)** | Разные модели для записи и чтения (command vs query) | Write-path остаётся единым; для списков UI — таблицы проекций и projectors ([ADR-014](./docs/architecture/adr-014-read-model-projections.md)), без отдельного query-буса |
 | **Saga / Outbox** | Outbox — надёжная доставка событий вовне (`transaction.created`, `transaction.completed`, `transaction.failed`, `transaction.retried`); Saga — распределённые транзакции между сервисами | Outbox реализован; типизированные события — ADR-009; Saga — при multi-service |
 | **Scoped idempotency** | Ключ идемпотентности уникален в рамках клиента, а не глобально | Сейчас global unique — проще для MVP |
 | **Классический double-entry (дебет = кредит всегда)** | Каждая операция — парные проводки на план счетов | Deposit/withdraw — односторонние проводки; transfer — debit + credit; достаточно для demo |
@@ -620,11 +620,11 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 1. **Scoped idempotency** — `(customer_id, idempotency_key)` unique вместо global; ключ уникален в рамках клиента, а не всей системы — разные клиенты могут использовать одинаковые ключи без конфликта.
 2. **API v2+ / эволюция JSON** — breaking changes только через новую версию; v1 отделён (`Api/V1`, `Resources/V1`, ADR при необходимости). Rate limiting на API — реализован (ADR-008); дальше — scoped Sanctum tokens.
 3. **Outbox + типизированные доменные события** — реализован (ADR-006, ADR-009): `transaction.created` / `transaction.completed` / `transaction.failed` / `transaction.retried`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
-4. **Read Services** — при усложнении выписок и отчётов; сложное чтение выносится из контроллеров в отдельные сервисы — проще оптимизировать SQL и не раздувать HTTP-слой.
+4. **Read Services** — выписки и отчёты поверх проекций ([ADR-014](./docs/architecture/adr-014-read-model-projections.md)); базовые списки UI уже на read models.
 5. **Observability** — Telescope в dev; Horizon для очередей (реализовано, [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)); дальше — metrics/tracing (Prometheus, OpenTelemetry).
-6. **High-load DB** — cursor pagination (API + backoffice), индексы под `id DESC`, **реализованный cutover pipeline** ([ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](./docs/architecture/partitioning-plan.md), `PartitionCatalog` / `PartitionCutover`, Artisan `partitions:*`). **Следующий шаг в prod** — поэтапный cutover по таблицам на staging, controlled swap; параллельно — снимки балансов, инкрементальная сверка.
+6. **High-load DB** — cursor pagination (API + backoffice), индексы под `id DESC`, **реализованный cutover pipeline** ([ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](./docs/architecture/partitioning-plan.md), `PartitionCatalog` / `PartitionCutover`, Artisan `partitions:*`). **Следующий шаг в prod** — поэтапный cutover по таблицам на staging, controlled swap.
 
-**Уже сделано (high-load):** account-sharded transaction queues + Horizon; cursor pagination и tooling партиционирования (ADR-012, partitioning-plan).
+**Уже сделано (high-load):** account-sharded transaction queues + Horizon; cursor pagination и tooling партиционирования (ADR-012); снимки баланса и поэтапная сверка (ADR-013); проекции для списков UI (ADR-014, `read-models:rebuild`).
 
 ---
 

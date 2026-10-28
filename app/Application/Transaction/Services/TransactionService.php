@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Transaction\Services;
 
 use App\Application\Outbox\Services\OutboxWriterService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
@@ -36,6 +37,7 @@ final readonly class TransactionService
     public function __construct(
         private OutboxWriterService $outboxWriter,
         private TransactionQueueRouter $queueRouter,
+        private ReadModelProjectionService $projectionService,
     ) {}
 
     /**
@@ -202,6 +204,8 @@ final readonly class TransactionService
             );
         });
 
+        $this->projectionService->projectTransactionAndAccounts($transaction->refresh());
+
         ProcessTransactionJob::dispatch($transaction->id)
             ->onQueue($this->queueRouter->queueFor($transaction));
 
@@ -282,6 +286,8 @@ final readonly class TransactionService
         if ($result->transaction->status !== TransactionStatus::Pending) {
             return;
         }
+
+        $this->projectionService->projectTransactionAndAccounts($result->transaction);
 
         ProcessTransactionJob::dispatch($result->transaction->id)
             ->onQueue($this->queueRouter->queueFor($result->transaction));

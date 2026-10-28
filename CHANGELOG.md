@@ -16,6 +16,7 @@
 - Документ `docs/architecture/partitioning-plan.md`, ADR-012, cutover pipeline (`PartitionCatalog`, `PartitionCutover`, Artisan `partitions:prepare|backfill|validate|swap|cutover|ensure`, scheduler `partitions:ensure`).
 - Feature-тест `CursorPaginationTest`.
 - Снимки баланса (`account_balance_snapshots`), Artisan `ledger:snapshot-balances`, поэтапная сверка ([ADR-013](docs/architecture/adr-013-balance-snapshots-incremental-reconciliation.md)); feature-тест `BalanceSnapshotsTest`.
+- Проекции для чтения: `account_summary_read_models`, `transaction_summary_read_models`, projectors, `ReadModelProjectionService`; web/backoffice-листы читают проекции; Artisan `read-models:rebuild`, scheduler nightly ([ADR-014](docs/architecture/adr-014-read-model-projections.md)); `ReadModelsSeeder`, feature-тест `ReadModelsTest`.
 
 ## [2.0.0] — Portfolio Release
 

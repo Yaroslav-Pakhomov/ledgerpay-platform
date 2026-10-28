@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\Outbox\Jobs\PublishOutboxMessageJob;
 use App\Application\Outbox\Services\OutboxPublisherService;
 use App\Application\Outbox\Services\OutboxWriterService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Application\Transaction\Services\TransactionService;
@@ -107,7 +109,11 @@ final class OutboxPatternTest extends TestCase
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
-        ])->handle(app(TransactionProcessorService::class));
+        ])->handle(
+            app(TransactionProcessorService::class),
+            app(ReadModelProjectionService::class),
+            app(AuditLoggerService::class),
+        );
 
         $this->assertDatabaseHas('outbox_messages', [
             'event_name' => 'transaction.completed',
@@ -200,7 +206,11 @@ final class OutboxPatternTest extends TestCase
         try {
             app(ProcessTransactionJob::class, [
                 'transactionId' => $transaction->id,
-            ])->handle(app(TransactionProcessorService::class));
+            ])->handle(
+                app(TransactionProcessorService::class),
+                app(ReadModelProjectionService::class),
+                app(AuditLoggerService::class)
+            );
         } catch (Throwable $exception) {
             app(ProcessTransactionJob::class, [
                 'transactionId' => $transaction->id,
@@ -234,6 +244,8 @@ final class OutboxPatternTest extends TestCase
 
     /**
      * Повторный failed() для уже Failed-транзакции не создаёт дубликат outbox-события.
+     *
+     * @throws Throwable
      */
     public function test_failed_job_does_not_duplicate_outbox_when_already_failed(): void
     {
@@ -257,7 +269,11 @@ final class OutboxPatternTest extends TestCase
         $job         = app(ProcessTransactionJob::class, ['transactionId' => $transaction->id]);
 
         try {
-            $job->handle(app(TransactionProcessorService::class));
+            $job->handle(
+                app(TransactionProcessorService::class),
+                app(ReadModelProjectionService::class),
+                app(AuditLoggerService::class),
+            );
         } catch (Throwable $exception) {
             $job->failed($exception);
         }

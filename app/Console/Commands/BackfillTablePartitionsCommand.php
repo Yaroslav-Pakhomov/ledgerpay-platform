@@ -35,7 +35,13 @@ final class BackfillTablePartitionsCommand extends Command
      */
     public function handle(PartitionCutover $cutover, PartitionCatalog $catalog): int
     {
-        $table = (string) $this->argument('table');
+        $table = $this->argument('table');
+
+        if (!is_string($table)) {
+            $this->error('Имя таблицы должно быть строкой.');
+
+            return self::FAILURE;
+        }
 
         if (!$catalog->knows($table)) {
             $this->error('Допустимо: ' . implode(', ', $catalog->tables()));

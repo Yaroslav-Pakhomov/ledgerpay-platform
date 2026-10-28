@@ -174,9 +174,7 @@ class TransactionController extends Controller
      * Возвращает одну транзакцию по uuid.
      *
      * Вместе с транзакцией загружаются связанные счета
-     * и записи в бухгалтерской книге.
-     *
-     * TransactionResource
+     * и записи в бухгалтерской книге (основная таблица, не read model).
      */
     public function show(string $uuid): array
     {

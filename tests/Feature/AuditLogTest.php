@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Application\Audit\Services\AuditLoggerService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Queue;
 use LogicException;
 use Tests\Feature\Api\Concerns\CreatesApiFixtures;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Feature-тесты immutable audit log.
@@ -189,6 +191,8 @@ final class AuditLogTest extends TestCase
      * Успешная обработка job создаёт audit-запись transaction_completed.
      *
      * Worker без HTTP-сессии → actor_user_id = null.
+     *
+     * @throws Throwable
      */
     public function test_job_logs_transaction_completed(): void
     {
@@ -209,7 +213,11 @@ final class AuditLogTest extends TestCase
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
-        ])->handle(app(TransactionProcessorService::class));
+        ])->handle(
+            app(TransactionProcessorService::class),
+            app(ReadModelProjectionService::class),
+            app(AuditLoggerService::class),
+        );
 
         $this->assertDatabaseHas('audit_logs', [
             'action'        => AuditAction::TransactionCompleted->value,

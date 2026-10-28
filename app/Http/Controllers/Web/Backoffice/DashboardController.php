@@ -8,9 +8,11 @@ use App\Application\Audit\Services\AuditLoggerService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Customer\Models\Customer;
+use App\Domain\ReadModel\Models\TransactionSummaryReadModel;
 use App\Domain\Transaction\Enums\TransactionStatus;
 use App\Domain\Transaction\Models\Transaction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Transaction\Backoffice\TransactionSummaryReadModelResource;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
@@ -68,15 +70,9 @@ final class DashboardController extends Controller
             ->get();
 
         // Получаем последние неуспешные транзакции.
-        $failedTransactions = Transaction::query()
-            // Загружаем связанные счета и их владельцев заранее,
-            // чтобы избежать проблемы N+1 запросов.
-            ->with([
-                'sourceAccount.customer',
-                'targetAccount.customer',
-            ])
-            ->where('status', TransactionStatus::Failed)
-            ->latest()
+        $failedTransactions = TransactionSummaryReadModel::query()
+            ->where('status', TransactionStatus::Failed->value)
+            ->latest('id')
             ->limit(20)
             ->get();
 
@@ -122,30 +118,7 @@ final class DashboardController extends Controller
             // Подготавливаем данные неуспешных транзакций
             // для отображения в таблице панели управления.
             'failed_transactions' => $failedTransactions->map(
-                fn (Transaction $transaction): array => [
-                    'uuid'           => $transaction->uuid,
-                    'type'           => $transaction->type->value,
-                    'status'         => $transaction->status->value,
-                    'amount'         => $transaction->amount,
-                    'currency'       => $transaction->currency,
-                    'failure_reason' => $transaction->failure_reason,
-
-                    // Связанные счёт или клиент могут отсутствовать,
-                    // поэтому используется null-safe оператор.
-                    'source_customer' => $transaction
-                        ->sourceAccount
-                        ?->customer
-                        ?->email,
-
-                    'target_customer' => $transaction
-                        ->targetAccount
-                        ?->customer
-                        ?->email,
-
-                    'created_at' => $transaction
-                        ->created_at
-                        ->toDateTimeString(),
-                ]
+                fn (TransactionSummaryReadModel $transaction): array => TransactionSummaryReadModelResource::make($transaction)->resolve()
             ),
         ]);
     }

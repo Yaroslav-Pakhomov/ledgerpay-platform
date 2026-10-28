@@ -4,6 +4,8 @@
 
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed
+# ReadModelsSeeder в DatabaseSeeder; при ручной миграции без seed:
+# ./vendor/bin/sail artisan read-models:rebuild --truncate
 ./vendor/bin/sail artisan test
 ./vendor/bin/sail composer pint:test
 ./vendor/bin/sail composer stan
@@ -63,7 +65,7 @@ curl -s http://localhost/api/v1/health/ready
 
 - [ ] README актуален
 - [ ] В OpenAPI server указан `/api/v1`
-- [ ] ADR описывают ключевые решения, включая shard queues ([ADR-011](../architecture/adr-011-account-sharded-transaction-queues.md))
+- [ ] ADR описывают ключевые решения, включая shard queues ([ADR-011](../architecture/adr-011-account-sharded-transaction-queues.md)) и проекции для чтения ([ADR-014](../architecture/adr-014-read-model-projections.md))
 - [ ] Сценарий для собеседования открывается из README ([`docs/interview/walkthrough.md`](../interview/walkthrough.md))
 - [ ] Личные заметки demo (опционально, локально, не в git): `docs/interview/portfolio-notes.md`
 - [ ] В CHANGELOG есть запись о релизе

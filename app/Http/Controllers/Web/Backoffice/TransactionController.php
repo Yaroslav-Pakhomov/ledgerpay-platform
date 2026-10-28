@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Web\Backoffice;
 
-use App\Domain\Transaction\Models\Transaction;
+use App\Domain\ReadModel\Models\TransactionSummaryReadModel;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Transaction\Backoffice\TransactionResource;
+use App\Http\Resources\Transaction\Backoffice\TransactionSummaryReadModelResource;
 use Illuminate\Http\Request;
 use Inertia\Response;
 
@@ -29,10 +29,7 @@ final class TransactionController extends Controller
         $type   = $request->string('type')->toString();
 
         // Формируем выборку транзакций.
-        $transactionsPaginator = Transaction::query()
-            // Загружаем исходный и целевой счета вместе с их владельцами,
-            // чтобы избежать проблемы N+1 запросов.
-            ->with(['sourceAccount.customer', 'targetAccount.customer'])
+        $transactionsPaginator = TransactionSummaryReadModel::query()
             // Применяем фильтр по статусу,
             // только если значение было передано в запросе.
             ->when($status !== '', fn ($query) => $query->where('status', $status))
@@ -47,9 +44,9 @@ final class TransactionController extends Controller
         // Преобразуем модели внутри пагинатора в массивы,
         // содержащие только необходимые интерфейсу данные.
         $transactions         = $transactionsPaginator->toArray();
-        $transactions['data'] = TransactionResource::collection(
-            $transactionsPaginator->items()
-        )->resolve();
+        $transactions['data'] = collect($transactionsPaginator->items())
+            ->map(fn (TransactionSummaryReadModel $transaction) => TransactionSummaryReadModelResource::make($transaction)->resolve())
+            ->all();
 
         return inertia('Backoffice/Transactions', [
             'filters' => [

@@ -40,7 +40,13 @@ final class CutoverTablePartitionsCommand extends Command
      */
     public function handle(PartitionCutover $cutover, PartitionCatalog $catalog): int
     {
-        $table = (string) $this->argument('table');
+        $table = $this->argument('table');
+
+        if (!is_string($table)) {
+            $this->error('Имя таблицы должно быть строкой.');
+
+            return self::FAILURE;
+        }
 
         if (!$catalog->knows($table)) {
             $this->error('Допустимо: ' . implode(', ', $catalog->tables()));
@@ -54,7 +60,8 @@ final class CutoverTablePartitionsCommand extends Command
             return self::SUCCESS;
         }
 
-        $from = $this->option('from') ? (string) $this->option('from') : null;
+        $fromOption = $this->option('from');
+        $from       = is_string($fromOption) && $fromOption !== '' ? $fromOption : null;
 
         try {
             $this->info('prepare');

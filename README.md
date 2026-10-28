@@ -1078,6 +1078,25 @@ Backoffice: `/backoffice/balance-snapshots`.
 ./vendor/bin/sail artisan ledger:snapshot-balances --force
 ```
 
+### Проекции для чтения (read models)
+
+Списки счетов и операций в личном кабинете и в бэк-офисе читают из таблиц проекций, а не из основных таблиц с соединениями.
+
+Таблицы:
+
+- `account_summary_read_models`
+- `transaction_summary_read_models`
+
+Пересборка после миграций или при рассинхроне:
+
+```bash
+./vendor/bin/sail artisan read-models:rebuild --truncate
+```
+
+Планировщик: `read-models:rebuild --chunk=1000` ежедневно в 03:00.
+
+Подробнее: [ADR-014](./docs/architecture/adr-014-read-model-projections.md).
+
 ### Защита от злоупотреблений
 
 LedgerPay использует ограничения скорости для конкретных запросов:
@@ -1124,7 +1143,7 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 Проект сознательно не усложнён преждевременно такими подходами, как:
 
 * Event Sourcing;
-* CQRS;
+* полный CQRS (для UI используются отдельные таблицы проекций — [ADR-014](./docs/architecture/adr-014-read-model-projections.md), write-path без изменений);
 * Saga;
 * отдельный Repository layer для каждой модели.
 
@@ -1142,7 +1161,7 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 
 - **Scoped idempotency per customer** — отдельная область `Idempotency-Key` для каждого клиента.
 - **Sanctum token abilities** — разграничение прав доступа для API-токенов.
-- **Query/read services** — отдельный слой для сложных выборок и отчётности.
+- **Query/read services** — выписки и отчёты поверх проекций (базовые списки UI уже на read models, [ADR-014](./docs/architecture/adr-014-read-model-projections.md)).
 - **Metrics** — сбор технических и бизнес-метрик системы.
 - **Distributed tracing** — трассировка запросов через API, очередь и worker.
 - **Load tests** — проверка системы под высокой нагрузкой.

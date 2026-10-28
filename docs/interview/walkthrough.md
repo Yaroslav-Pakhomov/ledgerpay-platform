@@ -18,6 +18,7 @@ LedgerPay — компактная fintech-система учёта и движ
 - аудит (audit log)
 - сверка (reconciliation)
 - cursor pagination и план партиционирования append-only таблиц
+- проекции для чтения (read models) — списки UI без тяжёлых соединений таблиц
 
 ## 2. Показать архитектуру
 
@@ -113,6 +114,15 @@ app/Http
 - `GET /api/v1/transactions?limit=10`
 - backoffice: `/backoffice/transactions` — листание «Далее» / «Назад»
 
+**Проекции для списков (web / backoffice):**
+
+- `app/Application/ReadModel/Projectors/*`, `ReadModelProjectionService`
+- таблицы `account_summary_read_models`, `transaction_summary_read_models`
+- обновление при создании счёта/операции и после worker; CLI `read-models:rebuild`
+- API `GET /api/v1/transactions` по-прежнему читает основную таблицу `transactions`
+
+Подробнее: [ADR-014](../architecture/adr-014-read-model-projections.md).
+
 ## 7. Показать целостность данных
 
 Открыть миграции:
@@ -207,6 +217,7 @@ app/Http
 - outbox — `OutboxPatternTest`
 - сверка — `ReconciliationTest`
 - снимки баланса и инкремент сверки — `BalanceSnapshotsTest`
+- проекции для чтения — `ReadModelsTest`
 - диагностика — `DiagnosticsTest`
 - маршрутизация shard-очередей — `TransactionQueueRoutingTest`
 - **конкурентность (несколько PHP-процессов, PostgreSQL)** — `tests/Concurrency/TransactionConcurrencyTest`: параллельные списания, встречные переводы, гонка ключа идемпотентности

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Application\Audit\Services\AuditLoggerService;
+use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Transaction\Jobs\ProcessTransactionJob;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Account\Models\Account;
@@ -110,6 +112,9 @@ final class TransactionProcessingTest extends TestCase
         Queue::assertPushed(ProcessTransactionJob::class, 1);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function test_deposit_job_increases_balance_and_creates_credit_ledger_entry(): void
     {
         Queue::fake();
@@ -134,7 +139,11 @@ final class TransactionProcessingTest extends TestCase
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
-        ])->handle(app(TransactionProcessorService::class));
+        ])->handle(
+            app(TransactionProcessorService::class),
+            app(ReadModelProjectionService::class),
+            app(AuditLoggerService::class),
+        );
 
         $account->refresh();
         $transaction->refresh();
@@ -152,6 +161,9 @@ final class TransactionProcessingTest extends TestCase
         ]);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function test_withdrawal_decreases_balance_and_creates_debit_ledger_entry(): void
     {
         Queue::fake();
@@ -174,7 +186,11 @@ final class TransactionProcessingTest extends TestCase
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
-        ])->handle(app(TransactionProcessorService::class));
+        ])->handle(
+            app(TransactionProcessorService::class),
+            app(ReadModelProjectionService::class),
+            app(AuditLoggerService::class),
+        );
 
         $account->refresh();
         $transaction->refresh();
@@ -191,6 +207,9 @@ final class TransactionProcessingTest extends TestCase
         ]);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function test_transfer_moves_money_between_accounts_and_creates_double_entry_ledger(): void
     {
         Queue::fake();
@@ -218,7 +237,11 @@ final class TransactionProcessingTest extends TestCase
 
         app(ProcessTransactionJob::class, [
             'transactionId' => $transaction->id,
-        ])->handle(app(TransactionProcessorService::class));
+        ])->handle(
+            app(TransactionProcessorService::class),
+            app(ReadModelProjectionService::class),
+            app(AuditLoggerService::class),
+        );
 
         $source->refresh();
         $target->refresh();
@@ -247,6 +270,9 @@ final class TransactionProcessingTest extends TestCase
         ]);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function test_withdrawal_fails_when_balance_is_insufficient(): void
     {
         Queue::fake();
@@ -270,7 +296,11 @@ final class TransactionProcessingTest extends TestCase
         try {
             app(ProcessTransactionJob::class, [
                 'transactionId' => $transaction->id,
-            ])->handle(app(TransactionProcessorService::class));
+            ])->handle(
+                app(TransactionProcessorService::class),
+                app(ReadModelProjectionService::class),
+                app(AuditLoggerService::class),
+            );
         } catch (Throwable $exception) {
             app(ProcessTransactionJob::class, [
                 'transactionId' => $transaction->id,

@@ -37,4 +37,5 @@
 - [ADR-011: Account-sharded transaction queues (Аккаунт-сегментированные очереди транзакций) и Horizon](architecture/adr-011-account-sharded-transaction-queues.md)
 - [ADR-012: Cursor pagination и партиционирование](./architecture/adr-012-cursor-pagination-partitioning.md)
 - [ADR-013: Снимки баланса и поэтапная сверка](architecture/adr-013-balance-snapshots-incremental-reconciliation.md)
+- [ADR-014: Проекции для чтения (read models)](architecture/adr-014-read-model-projections.md)
 - [План партиционирования и cutover CLI](./architecture/partitioning-plan.md)
