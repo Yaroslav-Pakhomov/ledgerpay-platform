@@ -1,85 +1,130 @@
 <script setup>
-import { Link, usePage, router } from '@inertiajs/vue3';
+import {computed, ref} from 'vue';
+import {Link, router, usePage} from '@inertiajs/vue3';
+import AppNavLink from '@/Components/UI/AppNavLink.vue';
+import FlashAlert from '@/Components/UI/FlashAlert.vue';
 
 const page = usePage();
+const moreOpen = ref(false);
+
+const isBackoffice = computed(() => page.props.auth.user?.is_backoffice);
 
 function logout() {
     router.post(route('logout'));
+}
+
+function navActive(...patterns) {
+    return patterns.some((p) => route().current(p));
 }
 </script>
 
 <template>
     <div class="min-h-screen bg-gray-950 text-gray-100">
-        <header class="border-b border-gray-800 bg-gray-900">
-            <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-                <Link href="/" class="text-xl font-bold tracking-tight">
-                    LedgerPay
-                </Link>
-
-                <div class="flex items-center gap-4 text-sm">
-                    <Link :href="route('dashboard')" class="text-gray-300 hover:text-white">
-                        Dashboard
+        <header class="sticky top-0 z-40 border-b border-white/5 bg-gray-900/95 backdrop-blur-md">
+            <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+                <div class="flex items-center gap-6">
+                    <Link href="/" class="text-lg font-bold tracking-tight text-white">
+                        LedgerPay
                     </Link>
 
-                    <Link
-                        v-if="page.props.auth.user?.is_backoffice"
-                        :href="route('backoffice.dashboard')"
-                        class="text-indigo-400 hover:text-indigo-300"
-                    >
-                        Бэк-офис
-                    </Link>
+                    <nav class="hidden items-center gap-1 md:flex">
+                        <AppNavLink
+                            :href="route('dashboard')"
+                            :active="navActive('dashboard')"
+                        >
+                            Dashboard
+                        </AppNavLink>
 
-                    <a
-                        v-if="page.props.auth.user?.is_backoffice"
-                        href="/horizon" target="_blank"
-                        class="text-indigo-400 hover:text-indigo-300"
-                    >
-                        Horizon
-                    </a>
+                        <template v-if="isBackoffice">
+                            <AppNavLink
+                                :href="route('backoffice.dashboard')"
+                                :active="navActive('backoffice.dashboard', 'backoffice.customers.*')"
+                            >
+                                Бэк-офис
+                            </AppNavLink>
 
-                    <Link
-                        v-if="page.props.auth.user?.is_backoffice"
-                        :href="route('backoffice.transactions.index')"
-                        class="text-gray-300 hover:text-white"
-                    >
-                        Транзакции
-                    </Link>
+                            <AppNavLink
+                                :href="route('backoffice.transactions.index')"
+                                :active="navActive('backoffice.transactions.*')"
+                            >
+                                Транзакции
+                            </AppNavLink>
 
-                    <Link
-                        v-if="page.props.auth.user?.is_backoffice"
-                        :href="route('backoffice.audit-logs.index')"
-                        class="text-gray-300 hover:text-white"
-                    >
-                        Аудит
-                    </Link>
+                            <div class="relative">
+                                <button
+                                    type="button"
+                                    class="rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition hover:bg-white/5 hover:text-gray-200"
+                                    @click="moreOpen = !moreOpen"
+                                >
+                                    Ещё ▾
+                                </button>
+                                <div
+                                    v-show="moreOpen"
+                                    class="absolute left-0 top-full z-50 mt-1 min-w-[12rem] rounded-xl border border-white/10 bg-gray-900 py-1 shadow-card"
+                                >
+                                    <Link
+                                        :href="route('backoffice.audit-logs.index')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Аудит
+                                    </Link>
+                                    <Link
+                                        :href="route('backoffice.diagnostics')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Диагностика
+                                    </Link>
+                                    <Link
+                                        :href="route('backoffice.balance-snapshots.index')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Снимки баланса
+                                    </Link>
+                                    <Link
+                                        :href="route('backoffice.outbox.index')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Outbox
+                                    </Link>
+                                    <Link
+                                        :href="route('backoffice.reconciliation.index')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Сверка
+                                    </Link>
+                                    <a
+                                        href="/horizon"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                    >
+                                        Horizon ↗
+                                    </a>
+                                </div>
+                            </div>
+                        </template>
+                    </nav>
+                </div>
 
-                    <Link
-                        v-if="page.props.auth.user?.is_backoffice"
-                        :href="route('backoffice.diagnostics')"
-                        class="text-gray-300 hover:text-white"
-                    >
-                        Диагностика
-                    </Link>
-
-                    <Link
-                        v-if="page.props.auth.user?.is_backoffice"
-                        :href="route('backoffice.balance-snapshots.index')"
-                        class="text-gray-300 hover:text-white"
-                    >
-                        Снимки баланса
-                    </Link>
-
+                <div class="flex items-center gap-3">
                     <Link
                         :href="route('profile.edit')"
-                        class="text-gray-300 hover:text-white"
+                        class="hidden text-sm text-gray-400 transition hover:text-white sm:inline"
                     >
                         Профиль
                     </Link>
-
-                    <span v-if="page.props.auth.user" class="hidden text-gray-500 md:inline">
+                    <span
+                        v-if="page.props.auth.user"
+                        class="hidden max-w-[10rem] truncate text-xs text-gray-500 lg:inline"
+                        :title="page.props.auth.user.email"
+                    >
                         {{ page.props.auth.user.email }}
                     </span>
-
                     <button class="btn-secondary" type="button" @click="logout">
                         Выйти
                     </button>
@@ -88,19 +133,18 @@ function logout() {
         </header>
 
         <main class="mx-auto max-w-7xl px-6 py-8">
-            <div v-if="page.props.flash.success" class="mb-6 rounded-lg border border-green-800 bg-green-950 px-4 py-3 text-green-200">
-                {{ page.props.flash.success }}
-            </div>
+            <FlashAlert
+                v-if="page.props.flash.success"
+                type="success"
+                :message="page.props.flash.success"
+            />
+            <FlashAlert
+                v-if="page.props.flash.error"
+                type="error"
+                :message="page.props.flash.error"
+            />
 
-            <div v-if="page.props.flash.error" class="mb-6 rounded-lg border border-red-800 bg-red-950 px-4 py-3 text-red-200">
-                {{ page.props.flash.error }}
-            </div>
-
-            <slot />
+            <slot/>
         </main>
     </div>
 </template>
-
-<style scoped>
-
-</style>

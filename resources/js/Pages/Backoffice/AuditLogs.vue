@@ -1,10 +1,11 @@
 <script setup>
 
 import AppLayout from "@/Layouts/AppLayout.vue";
-import {Link, router, useForm} from "@inertiajs/vue3";
+import {router, useForm} from "@inertiajs/vue3";
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import CursorPagination from "@/Components/UI/CursorPagination.vue";
+import Breadcrumbs from '@/Components/UI/Breadcrumbs.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -37,9 +38,12 @@ function applyFilters() {
 
 <template>
     <div class="space-y-8">
-        <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
-            ← Бэк-офис
-        </Link>
+        <Breadcrumbs
+            :items="[
+                { label: 'Бэк-офис', href: route('backoffice.dashboard') },
+                { label: 'Журнал аудита' },
+            ]"
+        />
 
         <PageHeader
             title="Журнал аудита"
@@ -71,43 +75,45 @@ function applyFilters() {
                 description="Audited-действия появятся здесь автоматически."
             />
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-gray-400">
-                    <tr>
-                        <th class="py-2">Дата</th>
-                        <th>Актор</th>
-                        <th>Действие</th>
-                        <th>Сущность</th>
-                        <th>Request ID</th>
-                        <th>Metadata</th>
-                    </tr>
-                    </thead>
+            <template v-else>
+                <div class="table-shell">
+                    <table class="data-table">
+                        <thead class="text-gray-400">
+                        <tr>
+                            <th class="py-2">Дата</th>
+                            <th>Актор</th>
+                            <th>Действие</th>
+                            <th>Сущность</th>
+                            <th>Request ID</th>
+                            <th>Metadata</th>
+                        </tr>
+                        </thead>
 
-                    <tbody>
-                    <tr v-for="log in logs.data" :key="log.id" class="border-t border-gray-800">
-                        <td class="py-3">{{ log.created_at }}</td>
-                        <td>{{ log.actor ?? 'system' }}</td>
-                        <td>{{ log.action }}</td>
-                        <td>
-                            <div class="text-xs text-gray-400">{{ log.entity_type }}</div>
-                            <div class="font-mono text-xs">{{ log.entity_uuid ?? '—' }}</div>
-                        </td>
-                        <td class="font-mono text-xs">{{ log.request_id ?? '—' }}</td>
-                        <td>
-                                <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
-                                        JSON.stringify(log.metadata, null, 2)
-                                    }}</pre>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                        <tbody>
+                        <tr v-for="log in logs.data" :key="log.id" class="border-t border-gray-800">
+                            <td class="py-3">{{ log.created_at }}</td>
+                            <td>{{ log.actor ?? 'system' }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>
+                                <div class="text-xs text-gray-400">{{ log.entity_type }}</div>
+                                <div class="font-mono text-xs">{{ log.entity_uuid ?? '—' }}</div>
+                            </td>
+                            <td class="font-mono text-xs">{{ log.request_id ?? '—' }}</td>
+                            <td>
+                                    <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
+                                            JSON.stringify(log.metadata, null, 2)
+                                        }}</pre>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
 
+                </div>
                 <CursorPagination
                     :prev-page-url="logs.prev_page_url"
                     :next-page-url="logs.next_page_url"
                 />
-            </div>
+            </template>
         </section>
     </div>
 </template>

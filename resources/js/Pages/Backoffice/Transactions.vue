@@ -1,12 +1,13 @@
 <script setup>
 
 import AppLayout from "@/Layouts/AppLayout.vue";
-import {Link, router, useForm} from "@inertiajs/vue3";
+import {router, useForm} from "@inertiajs/vue3";
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
 import CursorPagination from "@/Components/UI/CursorPagination.vue";
+import Breadcrumbs from '@/Components/UI/Breadcrumbs.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -36,11 +37,12 @@ function applyFilters() {
 
 <template>
     <div class="space-y-8">
-        <div>
-            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
-                ← Бэк-офис
-            </Link>
-        </div>
+        <Breadcrumbs
+            :items="[
+                { label: 'Бэк-офис', href: route('backoffice.dashboard') },
+                { label: 'Транзакции' },
+            ]"
+        />
 
         <PageHeader
             title="Монитор транзакций"
@@ -86,57 +88,59 @@ function applyFilters() {
                 description="Измените фильтры или создайте операцию на dashboard."
             />
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-gray-400">
-                    <tr>
-                        <th class="py-2">UUID</th>
-                        <th>Тип</th>
-                        <th>Статус</th>
-                        <th>Сумма</th>
-                        <th>Клиент</th>
-                        <th>Причина</th>
-                        <th>Создана</th>
-                        <th></th>
-                    </tr>
-                    </thead>
+            <template v-else>
+                <div class="table-shell">
+                    <table class="data-table">
+                        <thead class="text-gray-400">
+                        <tr>
+                            <th class="py-2">UUID</th>
+                            <th>Тип</th>
+                            <th>Статус</th>
+                            <th>Сумма</th>
+                            <th>Клиент</th>
+                            <th>Причина</th>
+                            <th>Создана</th>
+                            <th></th>
+                        </tr>
+                        </thead>
 
-                    <tbody>
-                    <tr v-for="transaction in transactions.data" :key="transaction.uuid"
-                        class="border-t border-gray-800">
-                        <td class="py-3 font-mono text-xs">{{ transaction.uuid }}</td>
-                        <td>{{ transaction.type }}</td>
-                        <td>
-                            <StatusBadge :status="transaction.status"/>
-                        </td>
-                        <td>
-                            <MoneyAmount :amount="transaction.amount" :currency="transaction.currency"/>
-                        </td>
-                        <td>
-                            {{ transaction.source_customer_email ?? transaction.target_customer_email ?? '—' }}
-                        </td>
-                        <td class="max-w-md text-red-300">
-                            {{ transaction.failure_reason ?? '—' }}
-                        </td>
-                        <td>{{ transaction.created_at }}</td>
-                        <td>
-                            <form
-                                v-if="transaction.status === 'failed'"
-                                @submit.prevent="$inertia.post(route('transactions.retry', transaction.uuid))"
-                            >
-                                <button class="text-indigo-400 hover:text-indigo-300">
-                                    Повторить
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                        <tbody>
+                        <tr v-for="transaction in transactions.data" :key="transaction.uuid"
+                            class="border-t border-gray-800">
+                            <td class="py-3 font-mono text-xs">{{ transaction.uuid }}</td>
+                            <td>{{ transaction.type }}</td>
+                            <td>
+                                <StatusBadge :status="transaction.status"/>
+                            </td>
+                            <td>
+                                <MoneyAmount :amount="transaction.amount" :currency="transaction.currency"/>
+                            </td>
+                            <td>
+                                {{ transaction.source_customer_email ?? transaction.target_customer_email ?? '—' }}
+                            </td>
+                            <td class="max-w-md text-red-300">
+                                {{ transaction.failure_reason ?? '—' }}
+                            </td>
+                            <td>{{ transaction.created_at }}</td>
+                            <td>
+                                <form
+                                    v-if="transaction.status === 'failed'"
+                                    @submit.prevent="$inertia.post(route('transactions.retry', transaction.uuid))"
+                                >
+                                    <button type="submit" class="btn-ghost">
+                                        Повторить
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <CursorPagination
                     :prev-page-url="transactions.prev_page_url"
                     :next-page-url="transactions.next_page_url"
                 />
-            </div>
+            </template>
 
         </section>
     </div>

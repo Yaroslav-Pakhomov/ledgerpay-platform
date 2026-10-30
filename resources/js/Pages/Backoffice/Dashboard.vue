@@ -1,10 +1,12 @@
 <script setup>
-import AppLayout from "@/Layouts/AppLayout.vue";
-import {Link, router, useForm} from "@inertiajs/vue3";
+import AppLayout from '@/Layouts/AppLayout.vue';
+import {router, useForm} from '@inertiajs/vue3';
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
+import StatCard from '@/Components/UI/StatCard.vue';
+import AppLink from '@/Components/UI/AppLink.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -34,11 +36,24 @@ function submitSearch() {
 
 <template>
     <div class="space-y-8">
+
         <PageHeader
+            eyebrow="Operations"
             title="Бэк-офис"
             description="Операционный мониторинг клиентов, счетов и неудачных транзакций."
         />
 
+        <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Клиенты" :value="metrics.customers"/>
+            <StatCard label="Счета" :value="metrics.accounts"/>
+            <StatCard label="Транзакции" :value="metrics.transactions"/>
+            <StatCard
+                label="Ошибки"
+                :value="metrics.failed_transactions"
+                variant="danger"
+                hint="Failed в очереди"
+            />
+        </section>
         <section class="grid gap-6 lg:grid-cols-4">
             <div class="card">
                 <div class="text-sm text-gray-400">Клиенты</div>
@@ -64,36 +79,23 @@ function submitSearch() {
         </section>
 
         <section class="card">
-            <div class="mb-4 flex items-center justify-between gap-4">
-                <h2 class="text-xl font-bold">Поиск клиентов</h2>
-
-                <div class="flex gap-4">
-                    <Link :href="route('backoffice.transactions.index')" class="text-indigo-400 hover:text-indigo-300">
-                        Монитор транзакций →
-                    </Link>
-
-                    <Link :href="route('backoffice.audit-logs.index')" class="text-indigo-400 hover:text-indigo-300">
-                        Журнал аудита →
-                    </Link>
-
-                    <Link :href="route('backoffice.outbox.index')" class="text-indigo-400 hover:text-indigo-300">
-                        Outbox →
-                    </Link>
-
-                    <Link :href="route('backoffice.reconciliation.index')" class="text-indigo-400 hover:text-indigo-300">
-                        Сверка →
-                    </Link>
+            <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <h2 class="text-lg font-semibold text-white">Поиск клиентов</h2>
+                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                    <AppLink :href="route('backoffice.transactions.index')">Монитор транзакций →</AppLink>
+                    <AppLink :href="route('backoffice.audit-logs.index')">Журнал аудита →</AppLink>
+                    <AppLink :href="route('backoffice.outbox.index')">Outbox →</AppLink>
+                    <AppLink :href="route('backoffice.reconciliation.index')">Сверка →</AppLink>
                 </div>
             </div>
 
-            <form class="mb-6 flex gap-3" @submit.prevent="submitSearch">
+            <form class="mb-6 flex flex-col gap-3 sm:flex-row" @submit.prevent="submitSearch">
                 <input
                     v-model="searchForm.search"
-                    class="input"
+                    class="input flex-1"
                     placeholder="Поиск по имени, email или UUID"
                 >
-
-                <button class="btn" :disabled="searchForm.processing">
+                <button class="btn sm:shrink-0" :disabled="searchForm.processing">
                     Найти
                 </button>
             </form>
@@ -104,8 +106,8 @@ function submitSearch() {
                 description="Измените поиск или дождитесь регистрации новых клиентов."
             />
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+            <div v-else class="table-shell">
+                <table class="data-table">
                     <thead class="text-gray-400">
                     <tr>
                         <th class="py-2">Клиент</th>
@@ -118,31 +120,23 @@ function submitSearch() {
                     </thead>
 
                     <tbody>
-                    <tr
-                        v-for="customer in customers"
-                        :key="customer.uuid"
-                        class="border-t border-gray-800"
-                    >
-                        <td class="py-3">
-                            <Link
-                                :href="route('backoffice.customers.show', customer.uuid)"
-                                class="text-indigo-400 hover:text-indigo-300"
-                            >
-                                <div class="font-semibold">{{ customer.name }}</div>
-                                <div class="font-mono text-xs text-gray-500">{{ customer.uuid }}</div>
-                            </Link>
-                        </td>
-                        <td>{{ customer.email }}</td>
-                        <td><StatusBadge :status="customer.status" /></td>
-                        <td>{{ customer.accounts_count }}</td>
-                        <td>{{ customer.created_at }}</td>
+                    <tr v-for="customer in customers" :key="customer.uuid">
                         <td>
-                            <Link
-                                :href="route('backoffice.customers.show', customer.uuid)"
-                                class="text-indigo-400 hover:text-indigo-300"
-                            >
+                            <AppLink :href="route('backoffice.customers.show', customer.uuid)">
+                                <span class="font-semibold text-white">{{ customer.name }}</span>
+                            </AppLink>
+                            <div class="font-mono text-xs text-gray-500">{{ customer.uuid }}</div>
+                        </td>
+                        <td class="text-gray-300">{{ customer.email }}</td>
+                        <td>
+                            <StatusBadge :status="customer.status"/>
+                        </td>
+                        <td class="tabular-nums">{{ customer.accounts_count }}</td>
+                        <td class="text-gray-400">{{ customer.created_at }}</td>
+                        <td>
+                            <AppLink :href="route('backoffice.customers.show', customer.uuid)">
                                 Открыть
-                            </Link>
+                            </AppLink>
                         </td>
                     </tr>
                     </tbody>
@@ -151,7 +145,7 @@ function submitSearch() {
         </section>
 
         <section class="card">
-            <h2 class="mb-4 text-xl font-bold">Неудачные транзакции</h2>
+            <h2 class="mb-4 text-lg font-semibold text-white">Неудачные транзакции</h2>
 
             <EmptyState
                 v-if="failed_transactions.length === 0"
@@ -159,8 +153,8 @@ function submitSearch() {
                 description="Failed-операции из очереди появятся здесь."
             />
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+            <div v-else class="table-shell">
+                <table class="data-table">
                     <thead class="text-gray-400">
                     <tr>
                         <th class="py-2">UUID</th>
@@ -174,28 +168,27 @@ function submitSearch() {
                     </thead>
 
                     <tbody>
-                    <tr
-                        v-for="transaction in failed_transactions"
-                        :key="transaction.uuid"
-                        class="border-t border-gray-800"
-                    >
-                        <td class="py-3 font-mono text-xs">{{ transaction.uuid }}</td>
+                    <tr v-for="transaction in failed_transactions" :key="transaction.uuid">
+                        <td class="max-w-[12rem] truncate font-mono text-xs text-gray-400" :title="transaction.uuid">
+                            {{ transaction.uuid }}
+                        </td>
                         <td>{{ transaction.type }}</td>
-                        <td><MoneyAmount :amount="transaction.amount" :currency="transaction.currency" /></td>
                         <td>
+                            <MoneyAmount :amount="transaction.amount" :currency="transaction.currency"/>
+                        </td>
+                        <td class="text-gray-300">
                             {{ transaction.source_customer ?? transaction.target_customer ?? '—' }}
                         </td>
                         <td class="max-w-md text-red-300">{{ transaction.failure_reason ?? '—' }}</td>
-                        <td>{{ transaction.created_at }}</td>
+                        <td class="text-gray-400">{{ transaction.created_at }}</td>
                         <td>
                             <form @submit.prevent="$inertia.post(route('transactions.retry', transaction.uuid))">
-                                <button class="text-indigo-400 hover:text-indigo-300">
+                                <button type="submit" class="btn-ghost">
                                     Повторить
                                 </button>
                             </form>
                         </td>
                     </tr>
-
                     </tbody>
                 </table>
             </div>

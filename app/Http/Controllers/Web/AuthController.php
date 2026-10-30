@@ -11,6 +11,7 @@ use App\Domain\Audit\Enums\AuditAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -98,6 +99,8 @@ final class AuthController extends Controller
         Auth::login($result['user']);
         $request->session()->regenerate();
 
+        event(new Registered($result['user']));
+
         $this->audit->log(
             auditAction: AuditAction::UserRegistered,
             entity: $result['user'],
@@ -107,7 +110,7 @@ final class AuthController extends Controller
             request: $request,
         );
 
-        return redirect()->route('dashboard');
+        return redirect()->route('verification.notice');
     }
 
     /**

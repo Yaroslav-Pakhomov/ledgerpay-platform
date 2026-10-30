@@ -1,6 +1,8 @@
 <script setup>
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
+import StatCard from '@/Components/UI/StatCard.vue';
+import Breadcrumbs from '@/Components/UI/Breadcrumbs.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 defineOptions({
@@ -10,7 +12,7 @@ defineOptions({
 
 defineProps({
     diagnostics: Object,
-    runtime: Object,
+    runtime    : Object,
 });
 
 function formatLocalDate(isoString) {
@@ -19,11 +21,11 @@ function formatLocalDate(isoString) {
 
     const parts = new Intl.DateTimeFormat('ru-RU', {
         timeZone,
-        hour: '2-digit',
-        minute: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
+        hour     : '2-digit',
+        minute   : '2-digit',
+        day      : '2-digit',
+        month    : '2-digit',
+        year     : 'numeric',
         hourCycle: 'h23',
     }).formatToParts(date)
 
@@ -39,33 +41,22 @@ function formatCheckContext(context) {
 
 <template>
     <div class="space-y-8">
+        <Breadcrumbs
+            :items="[
+                { label: 'Бэк-офис', href: route('backoffice.dashboard') },
+                { label: 'Диагностика' },
+            ]"
+        />
         <PageHeader
             title="Диагностика"
             description="Проверки готовности: БД, Redis, очередь, outbox и неуспешные транзакции."
         />
 
-        <section class="grid gap-6 lg:grid-cols-4">
-            <div class="card">
-                <div class="text-sm text-gray-400">Общий статус</div>
-                <div class="mt-3">
-                    <StatusBadge :status="diagnostics.status" />
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="text-sm text-gray-400">Окружение</div>
-                <div class="mt-2 font-semibold">{{ runtime.app_env }}</div>
-            </div>
-
-            <div class="card">
-                <div class="text-sm text-gray-400">Очередь</div>
-                <div class="mt-2 font-semibold">{{ runtime.queue_connection }}</div>
-            </div>
-
-            <div class="card">
-                <div class="text-sm text-gray-400">Проверено</div>
-                <div class="mt-2 text-sm">{{ formatLocalDate(diagnostics.checked_at) }}</div>
-            </div>
+        <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Общий статус" :value="diagnostics.status"/>
+            <StatCard label="Окружение" :value="runtime.app_env"/>
+            <StatCard label="Очередь" :value="runtime.queue_connection"/>
+            <StatCard label="Проверено" :value="formatLocalDate(diagnostics.checked_at)"/>
         </section>
 
         <section class="card">
@@ -103,8 +94,8 @@ function formatCheckContext(context) {
         <section class="card">
             <h2 class="mb-4 text-xl font-bold">Проверки</h2>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+            <div class="table-shell">
+                <table class="data-table">
                     <thead class="text-gray-400">
                     <tr>
                         <th class="py-2">Проверка</th>
@@ -122,11 +113,13 @@ function formatCheckContext(context) {
                     >
                         <td class="py-3 font-semibold">{{ check.name }}</td>
                         <td>
-                            <StatusBadge :status="check.status" />
+                            <StatusBadge :status="check.status"/>
                         </td>
                         <td>{{ check.message }}</td>
                         <td>
-                            <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{ formatCheckContext(check.context) }}</pre>
+                            <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
+                                    formatCheckContext(check.context)
+                                }}</pre>
                         </td>
                     </tr>
                     </tbody>

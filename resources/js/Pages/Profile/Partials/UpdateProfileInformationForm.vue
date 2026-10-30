@@ -1,11 +1,12 @@
 <script setup>
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+import {useForm, usePage} from '@inertiajs/vue3';
+import AppLink from "@/Components/UI/AppLink.vue";
 
 defineProps({
     mustVerifyEmail: {
         type: Boolean,
     },
-    status: {
+    status         : {
         type: String,
     },
 });
@@ -13,7 +14,7 @@ defineProps({
 const user = usePage().props.auth.user;
 
 const form = useForm({
-    name: user.name,
+    name : user.name,
     email: user.email,
 });
 </script>
@@ -35,7 +36,7 @@ const form = useForm({
             @submit.prevent="form.patch(route('profile.update'))"
         >
             <div>
-                <label class="label" for="name">Name</label>
+                <label class="label" for="name">Имя</label>
                 <input
                     id="name"
                     v-model="form.name"
@@ -68,14 +69,13 @@ const form = useForm({
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
                 <p class="text-sm text-gray-300">
                     Ваш адрес электронной почты не подтвержден.
-                    <Link
+                    <AppLink
                         :href="route('verification.send')"
                         method="post"
                         as="button"
-                        class="text-indigo-400 hover:text-indigo-300"
                     >
                         Нажмите здесь, чтобы повторно отправить письмо с подтверждением.
-                    </Link>
+                    </AppLink>
                 </p>
 
                 <div

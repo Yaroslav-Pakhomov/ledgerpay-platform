@@ -1,11 +1,12 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import {Link, router, useForm} from '@inertiajs/vue3';
+import {router, useForm} from '@inertiajs/vue3';
 import EmptyState from '@/Components/UI/EmptyState.vue';
 import MoneyAmount from '@/Components/UI/MoneyAmount.vue';
 import PageHeader from '@/Components/UI/PageHeader.vue';
 import StatusBadge from '@/Components/UI/StatusBadge.vue';
 import CursorPagination from "@/Components/UI/CursorPagination.vue";
+import Breadcrumbs from '@/Components/UI/Breadcrumbs.vue';
 
 defineOptions({
     layout: AppLayout,
@@ -45,11 +46,12 @@ function runForAccount(accountUuid) {
 
 <template>
     <div class="space-y-8">
-        <div>
-            <Link :href="route('backoffice.dashboard')" class="text-indigo-400 hover:text-indigo-300">
-                ← Бэк-офис
-            </Link>
-        </div>
+        <Breadcrumbs
+            :items="[
+                { label: 'Бэк-офис', href: route('backoffice.dashboard') },
+                { label: 'Сверка' },
+            ]"
+        />
 
         <PageHeader
             title="Сверка балансов"
@@ -88,67 +90,69 @@ function runForAccount(accountUuid) {
                 description="Запустите сверку, чтобы получить первый отчёт."
             />
 
-            <div v-else class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-gray-400">
-                    <tr>
-                        <th class="py-2">Проверено</th>
-                        <th>Счёт</th>
-                        <th>Клиент</th>
-                        <th>Баланс по счёту</th>
-                        <th>Баланс по реестру</th>
-                        <th>Разница</th>
-                        <th>Статус</th>
-                        <th>Проверка</th>
-                    </tr>
-                    </thead>
+            <template v-else>
+                <div class="table-shell">
+                    <table class="data-table">
+                        <thead class="text-gray-400">
+                        <tr>
+                            <th class="py-2">Проверено</th>
+                            <th>Счёт</th>
+                            <th>Клиент</th>
+                            <th>Баланс по счёту</th>
+                            <th>Баланс по реестру</th>
+                            <th>Разница</th>
+                            <th>Статус</th>
+                            <th>Проверка</th>
+                        </tr>
+                        </thead>
 
-                    <tbody>
-                    <tr
-                        v-for="report in reports.data"
-                        :key="report.uuid"
-                        class="border-t border-gray-800"
-                    >
-                        <td class="py-3">{{ report.checked_at }}</td>
-                        <td class="font-mono text-xs">{{ report.account_uuid }}</td>
-                        <td>{{ report.customer_email ?? '—' }}</td>
-                        <td>
-                            <MoneyAmount :amount="report.account_balance" :currency="report.currency"/>
-                        </td>
-                        <td>
-                            <MoneyAmount :amount="report.ledger_balance" :currency="report.currency"/>
-                        </td>
-                        <td
-                            :class="{
-                                    'text-green-300': report.difference === 0,
-                                    'text-red-300': report.difference !== 0,
-                                }"
+                        <tbody>
+                        <tr
+                            v-for="report in reports.data"
+                            :key="report.uuid"
+                            class="border-t border-gray-800"
                         >
-                            <MoneyAmount :amount="report.difference" :currency="report.currency"/>
-                        </td>
-                        <td>
-                            <StatusBadge :status="report.status"/>
-                        </td>
-                        <td>
-                            <button
-                                v-if="report.account_uuid"
-                                class="text-indigo-400 hover:text-indigo-300"
-                                type="button"
-                                @click="runForAccount(report.account_uuid)"
+                            <td class="py-3">{{ report.checked_at }}</td>
+                            <td class="font-mono text-xs">{{ report.account_uuid }}</td>
+                            <td>{{ report.customer_email ?? '—' }}</td>
+                            <td>
+                                <MoneyAmount :amount="report.account_balance" :currency="report.currency"/>
+                            </td>
+                            <td>
+                                <MoneyAmount :amount="report.ledger_balance" :currency="report.currency"/>
+                            </td>
+                            <td
+                                :class="{
+                                        'text-green-300': report.difference === 0,
+                                        'text-red-300': report.difference !== 0,
+                                    }"
                             >
-                                Сверить
-                            </button>
-                        </td>
-                    </tr>
+                                <MoneyAmount :amount="report.difference" :currency="report.currency"/>
+                            </td>
+                            <td>
+                                <StatusBadge :status="report.status"/>
+                            </td>
+                            <td>
+                                <button
+                                    v-if="report.account_uuid"
+                                    class="btn-ghost"
+                                    type="button"
+                                    @click="runForAccount(report.account_uuid)"
+                                >
+                                    Сверить
+                                </button>
+                            </td>
+                        </tr>
 
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
 
+                </div>
                 <CursorPagination
                     :prev-page-url="reports.prev_page_url"
                     :next-page-url="reports.next_page_url"
                 />
-            </div>
+            </template>
         </section>
     </div>
 </template>

@@ -28,7 +28,12 @@ final class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('verification.notice', absolute: false));
+
+        $this->followingRedirects()
+            ->get(route('verification.notice', absolute: false))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Auth/VerifyEmail'));
 
         $this->assertDatabaseHas('customers', [
             'email' => 'test@example.com',

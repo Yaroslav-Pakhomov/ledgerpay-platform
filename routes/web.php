@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\ApiDocsController;
+use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\AccountController;
 use App\Http\Controllers\Web\AuthController;
@@ -30,82 +36,113 @@ Route::middleware('guest')->group(function (): void {
         // Отправка формы регистрации
         Route::middleware('throttle:auth')->post('/register', 'register')->name('register.store');
     });
+
+    Route::controller(PasswordResetLinkController::class)->name('password.')->group(function (): void {
+        // Страница создания пароля
+        Route::get('forgot-password', 'create')->name('request');
+
+        // Отправка формы создания пароля
+        Route::post('forgot-password', 'store')->name('email');
+    });
+
+    Route::controller(NewPasswordController::class)->name('password.')->group(function (): void {
+        // Страница сброса пароля
+        Route::get('reset-password/{token}', 'create')->name('reset');
+
+        // Отправка формы сброса пароля
+        Route::post('reset-password', 'store')->name('store');
+    });
 });
 
 Route::middleware('auth')->group(function (): void {
-    // Главная страница клиента
-    Route::get('/', DashboardController::class)->name('dashboard');
 
     // Выход из клиента
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // Банковский счёт
-    Route::controller(AccountController::class)->prefix('accounts')->name('accounts.')->group(function (): void {
-        // Создание банковского счёта
-        Route::post('/', 'store')->name('store');
+    Route::get('verify-email', EmailVerificationPromptController::class)->name('verification.notice');
 
-        // Получение истории переводов по счёту
-        Route::get('/{uuid}/ledger', 'ledger')->whereUuid('uuid')->name('ledger');
+    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
+
+    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])->middleware('throttle:6,1')->name('verification.send');
+
+    Route::controller(ConfirmablePasswordController::class)->group(function (): void {
+        Route::get('confirm-password', 'show')->name('password.confirm');
+
+        Route::post('confirm-password', 'store');
     });
 
-    // Транзакции
-    Route::middleware('throttle:money-movement')->controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function (): void {
-        // Вложение средств на счёт
-        Route::post('/deposit', 'deposit')->name('deposit');
+    Route::middleware('verified')->group(function (): void {
+        // Главная страница клиента
+        Route::get('/', DashboardController::class)->name('dashboard');
 
-        // Вывод средств со счёта
-        Route::post('/withdraw', 'withdraw')->name('withdraw');
+        // Банковский счёт
+        Route::controller(AccountController::class)->prefix('accounts')->name('accounts.')->group(function (): void {
+            // Создание банковского счёта
+            Route::post('/', 'store')->name('store');
 
-        // Перевод средств со счёта на счёт
-        Route::post('/transfer', 'transfer')->name('transfer');
+            // Получение истории переводов по счёту
+            Route::get('/{uuid}/ledger', 'ledger')->whereUuid('uuid')->name('ledger');
+        });
 
-        // Перевод средств со счёта на счёт
-        Route::post('{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
-    });
+        // Транзакции
+        Route::middleware('throttle:money-movement')->controller(TransactionController::class)->prefix('transactions')->name('transactions.')->group(function (): void {
+            // Вложение средств на счёт
+            Route::post('/deposit', 'deposit')->name('deposit');
 
-    // Профиль Profile — оставить из Breeze (опционально)
-    Route::controller(ProfileController::class)->prefix('profile')->name('profile.')->group(function (): void {
+            // Вывод средств со счёта
+            Route::post('/withdraw', 'withdraw')->name('withdraw');
 
-        // Страница редактирования профиля
-        Route::get('/', 'edit')->name('edit');
+            // Перевод средств со счёта на счёт
+            Route::post('/transfer', 'transfer')->name('transfer');
 
-        // Отправка формы профиля
-        Route::patch('/', 'update')->name('update');
+            // Перевод средств со счёта на счёт
+            Route::post('{uuid}/retry', 'retry')->whereUuid('uuid')->name('retry');
+        });
 
-        // Удаление профиля
-        Route::delete('/', 'destroy')->name('destroy');
-    });
+        // Профиль Profile — оставить из Breeze (опционально)
+        Route::controller(ProfileController::class)->prefix('profile')->name('profile.')->group(function (): void {
 
-    // Бэк-офис
-    Route::middleware('backoffice')->prefix('backoffice')->name('backoffice.')->group(function (): void {
-        // Главная страница
-        Route::get('/', BackofficeDashboardController::class)->name('dashboard');
+            // Страница редактирования профиля
+            Route::get('/', 'edit')->name('edit');
 
-        // Страница Клиента
-        Route::get('/customers/{uuid}', [BackofficeCustomerController::class, 'show'])->whereUuid('uuid')->name('customers.show');
+            // Отправка формы профиля
+            Route::patch('/', 'update')->name('update');
 
-        // Список транзакций
-        Route::get('/transactions', [BackofficeTransactionController::class, 'index'])->name('transactions.index');
+            // Удаление профиля
+            Route::delete('/', 'destroy')->name('destroy');
+        });
 
-        // Список логов
-        Route::get('/audit-logs', [BackofficeAuditLogController::class, 'index'])->name('audit-logs.index');
+        // Бэк-офис
+        Route::middleware('backoffice')->prefix('backoffice')->name('backoffice.')->group(function (): void {
+            // Главная страница
+            Route::get('/', BackofficeDashboardController::class)->name('dashboard');
 
-        // Список опубликованных операций
-        Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
+            // Страница Клиента
+            Route::get('/customers/{uuid}', [BackofficeCustomerController::class, 'show'])->whereUuid('uuid')->name('customers.show');
 
-        Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
+            // Список транзакций
+            Route::get('/transactions', [BackofficeTransactionController::class, 'index'])->name('transactions.index');
 
-        Route::get('/balance-snapshots', [BalanceSnapshotController::class, 'index'])->name('balance-snapshots.index');
+            // Список логов
+            Route::get('/audit-logs', [BackofficeAuditLogController::class, 'index'])->name('audit-logs.index');
 
-        Route::middleware('throttle:backoffice-heavy')->controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
-            // Страница отчётов сверки
-            Route::get('/', 'index')->name('index');
+            // Список опубликованных операций
+            Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
 
-            // Запуск сверки для всех счетов
-            Route::post('/run', 'run')->name('run');
+            Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');
 
-            // Сверка одного счёта
-            Route::post('accounts/{accountUuid}/run', 'runForAccount')->whereUuid('accountUuid')->name('accounts.run');
+            Route::get('/balance-snapshots', [BalanceSnapshotController::class, 'index'])->name('balance-snapshots.index');
+
+            Route::middleware('throttle:backoffice-heavy')->controller(ReconciliationController::class)->prefix('reconciliation')->name('reconciliation.')->group(function (): void {
+                // Страница отчётов сверки
+                Route::get('/', 'index')->name('index');
+
+                // Запуск сверки для всех счетов
+                Route::post('/run', 'run')->name('run');
+
+                // Сверка одного счёта
+                Route::post('accounts/{accountUuid}/run', 'runForAccount')->whereUuid('accountUuid')->name('accounts.run');
+            });
         });
     });
 });
@@ -115,5 +152,5 @@ Route::prefix('api/docs')->name('api.docs.')->group(function (): void {
     Route::get('/openapi.yaml', [ApiDocsController::class, 'spec'])->name('spec');
 });
 
-// Breeze password reset / email verification маршруты временно убираются (вернуть в отдельном коммите при необходимости).
+// Маршруты Breeze: routes/auth.php не подключается — auth разведён в этом файле и AuthController.
 // require __DIR__.'/auth.php';
