@@ -1155,6 +1155,35 @@ PHPStan, PHPUnit, Pint и Rector используются как часть ав
 
 ---
 
+### Операционные метрики (Prometheus)
+
+LedgerPay отдаёт операционные метрики в формате Prometheus на защищённом эндпоинте.
+
+**Эндпоинт:** `GET /metrics`
+
+**Аутентификация:** токен Bearer (`LEDGERPAY_METRICS_TOKEN`, минимум 32 символа).
+
+**Сбор:** предрасчёт в Redis, команда:
+
+```bash
+./vendor/bin/sail artisan ledgerpay:metrics:refresh
+```
+
+Планировщик обновляет снимок каждую минуту; Prometheus может опрашивать эндпоинт чаще **без** тяжёлых SQL по «горячим» таблицам.
+
+Примеры имён метрик: `ledgerpay_transactions_pending`, `ledgerpay_outbox_pending`, `ledgerpay_queue_transactions_total_backlog`, `ledgerpay_snapshot_timestamp_seconds`.
+
+Пример конфигурации scrape: `deploy/prometheus/prometheus.yml.example` (локально скопировать в `prometheus.yml`, см. `.gitignore`).
+
+Backoffice: `/backoffice/operational-metrics` — те же значения, что в снимке для `/metrics` (без Bearer).
+
+Подробнее: [ADR-015](./docs/architecture/adr-015-prometheus-metrics.md).
+
+Тесты: `./vendor/bin/sail artisan test --filter=PrometheusMetricsTest`
+Тесты: `./vendor/bin/sail artisan test --filter='PrometheusMetricsTest|OperationalMetricsBackofficeTest'`
+
+---
+
 ## Возможные следующие шаги
 
 Возможные направления развития проекта:

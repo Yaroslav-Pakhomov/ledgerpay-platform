@@ -35,3 +35,6 @@ Schedule::command('ledger:snapshot-balances --limit=1000')->hourly()->withoutOve
 
 // Пересборка проекций счетов и операций
 Schedule::command('read-models:rebuild --chunk=1000')->dailyAt('03:00')->withoutOverlapping();
+
+// Обновление операционных метрик
+Schedule::command('ledgerpay:metrics:refresh')->everyMinute()->withoutOverlapping()->onOneServer();

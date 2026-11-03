@@ -32,3 +32,5 @@ Thumbs.db
 
 /docs/interview/portfolio-notes.md
 /plan
+
+/deploy/prometheus/prometheus.yml

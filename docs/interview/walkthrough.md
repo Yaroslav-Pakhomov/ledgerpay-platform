@@ -201,6 +201,15 @@ app/Http
 - страница диагностики: `/backoffice/diagnostics`
 - мониторинг очередей: `/horizon` (backoffice)
 
+
+### Операционные метрики (Prometheus)
+
+- Business-метрики **не** считаются на каждый scrape: команда `ledgerpay:metrics:refresh` (scheduler ~1 мин) пишет снимок в Redis (`MetricsSnapshot`).
+- Prometheus опрашивает `GET /metrics` (namespace `ledgerpay_*`), доступ — Bearer `LEDGERPAY_METRICS_TOKEN`.
+- Очереди: сумма shard-очередей `transactions-account-XX` + `default` / `outbox` (LLEN ready, как в diagnostics, но как time series).
+- Ограничения: row-gap проекций ≠ event lag; пустой/устаревший снимок может выглядеть как нули — см. [ADR-015](../architecture/adr-015-prometheus-metrics.md).
+- UI для оператора: `/backoffice/operational-metrics` (тот же snapshot, сессия backoffice, без Bearer).
+
 ## 12. Показать тесты
 
 Открыть:

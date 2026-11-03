@@ -21,5 +21,6 @@
 | [План партиционирования](./partitioning-plan.md) | Range-партиционирование append-only таблиц, миграция через shadow-таблицу |
 | [ADR-013: Снимки баланса и поэтапная сверка](./adr-013-balance-snapshots-incremental-reconciliation.md) | Неизменяемые снимки баланса, `ledger:snapshot-balances`, инкремент сверки в metadata отчёта |
 | [ADR-014: Проекции для чтения (read models)](./adr-014-read-model-projections.md) | Таблицы `account_summary_read_models` / `transaction_summary_read_models`, projectors, `read-models:rebuild` |
+| [ADR-015: Операционные метрики Prometheus](./adr-015-prometheus-metrics.md) | Операционные метрики (Prometheus) |
 
 См. также [OpenAPI spec](../openapi/ledgerpay.openapi.yaml) и [README_ARCHITECTURE.md](../../README_ARCHITECTURE.md).

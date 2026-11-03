@@ -39,3 +39,4 @@
 - [ADR-013: Снимки баланса и поэтапная сверка](architecture/adr-013-balance-snapshots-incremental-reconciliation.md)
 - [ADR-014: Проекции для чтения (read models)](architecture/adr-014-read-model-projections.md)
 - [План партиционирования и cutover CLI](./architecture/partitioning-plan.md)
+- [ADR-015: Операционные метрики Prometheus](architecture/adr-015-prometheus-metrics.md)

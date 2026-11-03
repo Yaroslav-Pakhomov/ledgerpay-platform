@@ -16,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "longlang/phpkafka": "^1.2",
+        "spatie/laravel-prometheus": "^1.7",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

@@ -77,6 +77,13 @@ function navActive(...patterns) {
                                         Диагностика
                                     </Link>
                                     <Link
+                                        :href="route('backoffice.operational-metrics')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Операционные метрики
+                                    </Link>
+                                    <Link
                                         :href="route('backoffice.balance-snapshots.index')"
                                         class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
                                         @click="moreOpen = false"
