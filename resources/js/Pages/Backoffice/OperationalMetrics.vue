@@ -97,6 +97,18 @@ function formatMetricValue(item) {
             />
         </section>
 
+        <p v-if="meta.grafana_url" class="text-sm text-gray-400">
+            <a
+                :href="meta.grafana_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-indigo-400 hover:text-indigo-300"
+            >
+                Открыть Grafana
+            </a>
+            — дашборд операционных метрик (Prometheus).
+        </p>
+
         <EmptyState
             v-if="meta.is_empty"
             title="Нет данных снимка"

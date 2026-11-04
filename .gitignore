@@ -34,3 +34,5 @@ Thumbs.db
 /plan
 
 /deploy/prometheus/prometheus.yml
+/deploy/prometheus/secrets/*
+!/deploy/prometheus/secrets/README.md

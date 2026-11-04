@@ -26,11 +26,18 @@ LedgerPay — платформа обработки финансовых опе�
 - Значения хранятся в Redis (**`MetricsSnapshot`**); при опросе Prometheus читается снимок.
 - Доступ к `/metrics` — **токен Bearer** + рекомендация сетевых ограничений (private network, ACL прокси).
 
+## Локальный стенд
+
+- Docker Compose **profile `observability`**: сервисы Prometheus и Grafana в сети Sail.
+- Scrape: `deploy/prometheus/prometheus.yml` (из example), Bearer через **`credentials_file`** (`deploy/prometheus/secrets/`, не в Git).
+- Grafana: provisioning datasource Prometheus + file dashboard `deploy/grafana/dashboards/ledgerpay-operational.json`.
+- Бэк-офис: опциональная ссылка `LEDGERPAY_GRAFANA_URL` на UI Grafana; runtime приложения от Grafana **не зависит**.
+
 ## Безопасность
 
 - Не использовать метки с высокой кардинальностью (`account_id`, `transaction_id`, `idempotency_key`).
 - Не экспортировать суммы денег и персональные данные.
-- Токен только в заголовке `Authorization`.
+- Токен только в заголовке `Authorization` (токен создаётся командой "openssl rand -hex 32").
 
 ## Семантика метрик
 
@@ -47,4 +54,4 @@ LedgerPay — платформа обработки финансовых опе�
 
 ## Будущие улучшения
 
-- Контрольные точки для отставания проекций; метрики очередей по shard; правила оповещений; дашборды Grafana; OpenTelemetry (Commit 27 — трассировка).
+- Контрольные точки для отставания проекций; метрики очередей по shard; правила оповещений (Alertmanager); OpenTelemetry — трассировка.

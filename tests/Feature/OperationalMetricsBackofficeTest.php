@@ -51,4 +51,36 @@ final class OperationalMetricsBackofficeTest extends TestCase
 
         $this->get('/backoffice/operational-metrics')->assertForbidden();
     }
+
+    public function test_backoffice_operational_metrics_includes_grafana_url_when_configured(): void
+    {
+        config()->set('ledgerpay_metrics.cache_store', 'array');
+        config()->set('ledgerpay_metrics.grafana_url', 'http://grafana.test:3000');
+
+        Cache::store('array')->put(MetricsSnapshot::KEY, [
+            'snapshot_timestamp_seconds' => now()->timestamp,
+        ], 600);
+
+        $this->actingAs(User::factory()->backOffice()->create())
+            ->get('/backoffice/operational-metrics')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('meta.grafana_url', 'http://grafana.test:3000')
+            );
+    }
+
+    public function test_backoffice_operational_metrics_omits_grafana_url_when_not_configured(): void
+    {
+        config()->set('ledgerpay_metrics.cache_store', 'array');
+        config()->set('ledgerpay_metrics.grafana_url', null);
+
+        Cache::store('array')->put(MetricsSnapshot::KEY, [
+            'snapshot_timestamp_seconds' => now()->timestamp,
+        ], 600);
+
+        $this->actingAs(User::factory()->backOffice()->create())
+            ->get('/backoffice/operational-metrics')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('meta.grafana_url', null));
+    }
 }

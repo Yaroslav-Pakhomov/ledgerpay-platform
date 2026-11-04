@@ -209,6 +209,8 @@ app/Http
 - Очереди: сумма shard-очередей `transactions-account-XX` + `default` / `outbox` (LLEN ready, как в diagnostics, но как time series).
 - Ограничения: row-gap проекций ≠ event lag; пустой/устаревший снимок может выглядеть как нули — см. [ADR-015](../architecture/adr-015-prometheus-metrics.md).
 - UI для оператора: `/backoffice/operational-metrics` (тот же snapshot, сессия backoffice, без Bearer).
+- Локально: `./vendor/bin/sail --profile observability up -d`, token для scrape — `deploy/prometheus/secrets/ledgerpay_metrics_token`, затем `ledgerpay:metrics:refresh`.
+- Grafana → folder LedgerPay → дашборд operational — те же `ledgerpay_*`, но как **графики во времени** (источник — Prometheus, не прямой опрос Laravel).
 
 ## 12. Показать тесты
 

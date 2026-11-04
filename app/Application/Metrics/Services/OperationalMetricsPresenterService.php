@@ -30,6 +30,7 @@ final readonly class OperationalMetricsPresenterService
      *         is_empty: bool,
      *         max_snapshot_age_seconds: int,
      *         metrics_endpoint: string,
+     *         grafana_url: string|null,
      *     }
      * }
      *
@@ -46,6 +47,8 @@ final readonly class OperationalMetricsPresenterService
 
         $maxAge = (int) config('ledgerpay_metrics.max_snapshot_age_seconds', 180);
 
+        $url = config('ledgerpay_metrics.grafana_url');
+
         return [
             'sections' => $this->sections($values),
             'meta'     => [
@@ -55,6 +58,7 @@ final readonly class OperationalMetricsPresenterService
                 'is_empty'                   => $values === [],
                 'max_snapshot_age_seconds'   => $maxAge,
                 'metrics_endpoint'           => url('/metrics'),
+                'grafana_url'                => is_string($url) && $url !== '' ? $url : null,
             ],
         ];
     }

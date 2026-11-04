@@ -1179,8 +1179,40 @@ Backoffice: `/backoffice/operational-metrics` — те же значения, ч
 
 Подробнее: [ADR-015](./docs/architecture/adr-015-prometheus-metrics.md).
 
-Тесты: `./vendor/bin/sail artisan test --filter=PrometheusMetricsTest`
 Тесты: `./vendor/bin/sail artisan test --filter='PrometheusMetricsTest|OperationalMetricsBackofficeTest'`
+
+---
+
+#### Локально: Prometheus + Grafana (Sail)
+
+Опциональный profile **`observability`** — scrape приложения и дашборд без изменения кода метрик.
+
+1. Скопировать конфиг scrape (не коммитить локальный файл):
+
+```bash
+cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
+```
+
+2. Создать файл `deploy/prometheus/secrets/ledgerpay_metrics_token`: одна строка = значение `LEDGERPAY_METRICS_TOKEN` из `.env` (≥ 32 символов, **без** префикса `Bearer`). См. [`deploy/prometheus/secrets/README.md`](deploy/prometheus/secrets/README.md).
+
+3. Поднять стек и обновить снимок:
+
+```bash
+./vendor/bin/sail --profile observability up -d
+./vendor/bin/sail artisan ledgerpay:metrics:refresh
+```
+
+4. **Prometheus:** `http://127.0.0.1:9090` → Status → Targets → job `ledgerpay` должен быть **UP**.
+
+5. **Grafana:** `http://127.0.0.1:3000` (логин по умолчанию см. `.env.example`: `GRAFANA_ADMIN_*`) → folder **LedgerPay** → дашборд **LedgerPay — операционные метрики**.
+
+6. В `.env` задай **`LEDGERPAY_GRAFANA_URL`**, чтобы на `/backoffice/operational-metrics` появилась ссылка «Открыть Grafana».
+
+7. После работы выключить profile:
+
+```bash
+./vendor/bin/sail --profile observability down
+```
 
 ---
 

@@ -19,6 +19,7 @@
 - Проекции для чтения: `account_summary_read_models`, `transaction_summary_read_models`, projectors, `ReadModelProjectionService`; web/backoffice-листы читают проекции; Artisan `read-models:rebuild`, scheduler nightly ([ADR-014](docs/architecture/adr-014-read-model-projections.md)); `ReadModelsSeeder`, feature-тест `ReadModelsTest`.
 - Операционные метрики Prometheus: пакет `spatie/laravel-prometheus`, эндпоинт `GET /metrics` (токен Bearer), предрасчёт в Redis (`MetricsSnapshot`), Artisan `ledgerpay:metrics:refresh`, scheduler (`onOneServer`), feature-тест `PrometheusMetricsTest` ([ADR-015](docs/architecture/adr-015-prometheus-metrics.md)); пример `deploy/prometheus/prometheus.yml.example`.
 - Backoffice: страница операционных метрик из Redis snapshot (`/backoffice/operational-metrics`).
+- Observability: Docker Compose profile `observability` (Prometheus + Grafana), provisioning datasource и дашборд `ledgerpay_*`; ссылка Grafana в backoffice (`LEDGERPAY_GRAFANA_URL`).
 
 ## [2.0.0] — Portfolio Release
 
