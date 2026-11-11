@@ -6,6 +6,7 @@ namespace App\Support\Http;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Context;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -25,21 +26,16 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ProblemDetails
 {
-    public static function make(
-        Request $request,
-        string $title,
-        string $detail,
-        int $status,
-        string $type = 'about:blank',
-        ?array $errors = null,
-    ): JsonResponse {
+    public static function make(Request $request, string $title, string $detail, int $status, string $type = 'about:blank', ?array $errors = null): JsonResponse
+    {
         $payload = [
             'type'       => $type,
             'title'      => $title,
             'status'     => $status,
             'detail'     => $detail,
             'instance'   => $request->path(),
-            'request_id' => $request->headers->get('X-Request-Id'),
+            'request_id' => Context::get('request_id') ?? $request->headers->get('X-Request-Id'),
+            'trace_id'   => Context::get('trace_id'),
         ];
 
         if ($errors !== null) {

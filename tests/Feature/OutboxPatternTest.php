@@ -137,9 +137,21 @@ final class OutboxPatternTest extends TestCase
             'available_at'   => null,
         ]);
 
+        $message->update([
+            'headers' => array_merge($message->headers ?? [], [
+                'traceparent' => '00-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-cccccccccccccccc-01',
+            ]),
+        ]);
+
         $this->assertDatabaseCount('outbox_messages', 1);
 
         $this->runArtisanSuccessfully('outbox:dispatch-pending');
+
+        Queue::assertPushed(
+            PublishOutboxMessageJob::class,
+            fn (PublishOutboxMessageJob $job): bool => $job->outboxMessageId === $message->id
+                && $job->traceparent === '00-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-cccccccccccccccc-01',
+        );
 
         Queue::assertPushed(
             PublishOutboxMessageJob::class,

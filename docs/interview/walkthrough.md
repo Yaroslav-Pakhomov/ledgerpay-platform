@@ -212,6 +212,16 @@ app/Http
 - Локально: `./vendor/bin/sail --profile observability up -d`, token для scrape — `deploy/prometheus/secrets/ledgerpay_metrics_token`, затем `ledgerpay:metrics:refresh`.
 - Grafana → folder LedgerPay → дашборд operational — те же `ledgerpay_*`, но как **графики во времени** (источник — Prometheus, не прямой опрос Laravel).
 
+### Distributed tracing (OpenTelemetry)
+
+Коротко: **Prometheus — «сколько и насколько плохо»; Jaeger — «где именно тормозит эта транзакция»** — через `traceparent`, исходящий буфер и фильтр аудита по идентификатору трассировки.
+
+- Spans: HTTP middleware, consumer spans на jobs, outbox сохраняет `traceparent`, publisher восстанавливает trace.
+- Jaeger UI: `http://127.0.0.1:16686` (тот же `sail --profile observability up -d`).
+- Audit backoffice: фильтр по `trace_id`; логи и Problem Details — `trace_id`.
+- Метрики и traces разделены (ADR-015 vs ADR-016).
+- Демо: curl `/api/v1/health/live -i`, затем deposit и trace tree в Jaeger (`ledgerpay-api`).
+
 ## 12. Показать тесты
 
 Открыть:

@@ -20,6 +20,7 @@
 - Операционные метрики Prometheus: пакет `spatie/laravel-prometheus`, эндпоинт `GET /metrics` (токен Bearer), предрасчёт в Redis (`MetricsSnapshot`), Artisan `ledgerpay:metrics:refresh`, scheduler (`onOneServer`), feature-тест `PrometheusMetricsTest` ([ADR-015](docs/architecture/adr-015-prometheus-metrics.md)); пример `deploy/prometheus/prometheus.yml.example`.
 - Backoffice: страница операционных метрик из Redis snapshot (`/backoffice/operational-metrics`).
 - Observability: Docker Compose profile `observability` (Prometheus + Grafana), provisioning datasource и дашборд `ledgerpay_*`; ссылка Grafana в backoffice (`LEDGERPAY_GRAFANA_URL`).
+- OpenTelemetry: W3C `traceparent`, spans для HTTP и queue jobs, `traceparent` в outbox, correlation `trace_id`/`span_id` в audit и structured logs, `X-Trace-Id` в ответах API, Jaeger в profile `observability` ([ADR-016](docs/architecture/adr-016-opentelemetry-tracing.md)); тесты `TracingServiceTest`, `TracingPropagationTest`.
 
 ## [2.0.0] — Portfolio Release
 

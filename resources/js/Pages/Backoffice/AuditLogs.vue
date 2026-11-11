@@ -20,12 +20,14 @@ const props = defineProps({
 const form = useForm({
     action    : props.filters.action ?? '',
     request_id: props.filters.request_id ?? '',
+    trace_id  : props.filters.trace_id ?? '',
 });
 
 function applyFilters() {
     const query = {
         action    : form.action,
-        request_id: form.request_id
+        request_id: form.request_id,
+        trace_id  : form.trace_id,
     }
 
     router.get(route('backoffice.audit-logs.index'), query, {
@@ -62,6 +64,11 @@ function applyFilters() {
                     <input v-model="form.request_id" class="input" placeholder="X-Request-Id">
                 </div>
 
+                <div>
+                    <label class="label" for="audit-trace-id">Trace ID</label>
+                    <input id="audit-trace-id" v-model="form.trace_id" class="input font-mono text-xs" maxlength="32" placeholder="32 hex-символа">
+                </div>
+
                 <div class="flex items-end">
                     <button class="btn" :disabled="form.processing">Применить</button>
                 </div>
@@ -85,6 +92,7 @@ function applyFilters() {
                             <th>Действие</th>
                             <th>Сущность</th>
                             <th>Request ID</th>
+                            <th>Trace</th>
                             <th>Metadata</th>
                         </tr>
                         </thead>
@@ -100,9 +108,15 @@ function applyFilters() {
                             </td>
                             <td class="font-mono text-xs">{{ log.request_id ?? '—' }}</td>
                             <td>
-                                    <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">{{
-                                            JSON.stringify(log.metadata, null, 2)
-                                        }}</pre>
+                                <div class="font-mono text-xs">{{ log.trace_id ?? '—' }}</div>
+                                <div class="font-mono text-xs text-gray-500">{{ log.span_id ?? '—' }}</div>
+                            </td>
+                            <td>
+                                <pre class="max-w-md overflow-x-auto rounded bg-gray-950 p-2 text-xs">
+                                    {{
+                                        JSON.stringify(log.metadata, null, 2)
+                                    }}
+                                </pre>
                             </td>
                         </tr>
                         </tbody>

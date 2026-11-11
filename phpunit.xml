@@ -36,5 +36,11 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="KAFKA_ENABLED" value="false"/>
+        <env name="OTEL_PHP_AUTOLOAD_ENABLED" value="true"/>
+        <env name="OTEL_TRACES_EXPORTER" value="none"/>
+        <env name="OTEL_METRICS_EXPORTER" value="none"/>
+        <env name="OTEL_LOGS_EXPORTER" value="none"/>
+        <env name="OTEL_PROPAGATORS" value="tracecontext"/>
+        <env name="OTEL_TRACES_SAMPLER" value="always_on"/>
     </php>
 </phpunit>

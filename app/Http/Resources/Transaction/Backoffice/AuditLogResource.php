@@ -25,6 +25,8 @@ final class AuditLogResource extends JsonResource
      *     metadata: array<string, mixed>|null,
      *     request_id: string|null,
      *     ip_address: string|null,
+     *     trace_id: string|null,
+     *     span_id: string|null,
      *     created_at: string,
      * }
      */
@@ -41,6 +43,8 @@ final class AuditLogResource extends JsonResource
             'request_id'  => $this->request_id,
             'ip_address'  => $this->ip_address,
             'created_at'  => $this->created_at->toDateTimeString(),
+            'trace_id'    => $this->trace_id,
+            'span_id'     => $this->span_id,
         ];
     }
 }

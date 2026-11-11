@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -28,7 +29,9 @@ final class ApiRequestLoggingMiddleware
         $response = $next($request);
 
         Log::info('API request handled.', [
-            'request_id'  => $request->headers->get('X-Request-Id'),
+            'request_id'  => Context::get('request_id') ?? $request->headers->get('X-Request-Id'),
+            'trace_id'    => Context::get('trace_id'),
+            'span_id'     => Context::get('span_id'),
             'method'      => $request->method(),
             'path'        => $request->path(),
             'status'      => $response->getStatusCode(),

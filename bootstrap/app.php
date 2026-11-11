@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureBackofficeUser;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestIdMiddleware;
 use App\Http\Middleware\SecurityHeadersMiddleware;
+use App\Http\Middleware\TraceHttpRequestMiddleware;
 use App\Support\Http\ProblemDetails;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            TraceHttpRequestMiddleware::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             SecurityHeadersMiddleware::class,
@@ -48,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->api(append: [
             RequestIdMiddleware::class,
+            TraceHttpRequestMiddleware::class,
             ApiRequestLoggingMiddleware::class,
             SecurityHeadersMiddleware::class,
             ApiVersionHeaderMiddleware::class,

@@ -54,4 +54,4 @@ LedgerPay — платформа обработки финансовых опе�
 
 ## Будущие улучшения
 
-- Контрольные точки для отставания проекций; метрики очередей по shard; правила оповещений (Alertmanager); OpenTelemetry — трассировка.
+- OpenTelemetry — см. [ADR-016](./adr-016-opentelemetry-tracing.md).

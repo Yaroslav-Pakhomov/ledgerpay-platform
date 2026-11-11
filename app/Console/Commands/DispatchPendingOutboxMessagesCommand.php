@@ -43,7 +43,10 @@ final class DispatchPendingOutboxMessagesCommand extends Command
             ->get();
 
         foreach ($outboxMessages as $outboxMessage) {
-            PublishOutboxMessageJob::dispatch($outboxMessage->id);
+            PublishOutboxMessageJob::dispatch(
+                outboxMessageId: $outboxMessage->id,
+                traceparent: is_string($outboxMessage->headers['traceparent'] ?? null) ? $outboxMessage->headers['traceparent'] : null,
+            );
         }
 
         $this->info("Отправленные {$outboxMessages->count()} исходящие сообщения.");

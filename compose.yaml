@@ -17,6 +17,18 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            OTEL_PHP_AUTOLOAD_ENABLED: "true"
+            OTEL_SERVICE_NAME: "ledgerpay-api"
+            OTEL_TRACES_EXPORTER: "otlp"
+            OTEL_METRICS_EXPORTER: "none"
+            OTEL_LOGS_EXPORTER: "none"
+            OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+            OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4318"
+            OTEL_PROPAGATORS: "tracecontext"
+            OTEL_TRACES_SAMPLER: "parentbased_traceidratio"
+            OTEL_TRACES_SAMPLER_ARG: "1.0"
+            OTEL_RESOURCE_ATTRIBUTES: "service.namespace=ledgerpay,deployment.environment=local"
+            OTEL_PHP_TRACES_PROCESSOR: "batch"
         volumes:
             - '.:/var/www/html'
         networks:
@@ -152,6 +164,20 @@ services:
             - sail
         depends_on:
             - prometheus
+
+    jaeger:
+        image: jaegertracing/jaeger:2.1.0
+        profiles:
+            - observability
+        restart: unless-stopped
+        ports:
+            - "127.0.0.1:16686:16686"
+        expose:
+            - "4317"
+            - "4318"
+        networks:
+            - sail
+
 networks:
     sail:
         driver: bridge

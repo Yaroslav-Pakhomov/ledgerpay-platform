@@ -33,7 +33,9 @@ use LogicException;
  * @property string|null               $user_agent
  * @property Carbon                    $created_at
  * @property Carbon                    $updated_at
- * @property-read User|null $actor
+ * @property string|null               $trace_id
+ * @property string|null               $span_id
+ * @property-read User|null            $actor
  */
 #[Fillable([
     'actor_user_id',
@@ -45,6 +47,8 @@ use LogicException;
     'request_id',
     'ip_address',
     'user_agent',
+    'trace_id',
+    'span_id',
 ])]
 #[Table(name: 'audit_logs')]
 final class AuditLog extends Model

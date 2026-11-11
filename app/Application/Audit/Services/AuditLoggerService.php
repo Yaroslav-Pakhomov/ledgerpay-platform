@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Audit\Services;
 
+use App\Application\Tracing\Services\TracingService;
 use App\Domain\Account\Models\Account;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Audit\Models\AuditLog;
@@ -44,6 +45,8 @@ final class AuditLoggerService
     {
         $actorUserId ??= Auth::id();
 
+        $tracing = app(TracingService::class);
+
         return AuditLog::query()->create([
             'actor_user_id' => $actorUserId,
             'action'        => $auditAction->value,
@@ -54,6 +57,8 @@ final class AuditLoggerService
             'request_id'    => $request?->headers->get('X-Request-Id'),
             'ip_address'    => $request?->ip(),
             'user_agent'    => $request?->userAgent(),
+            'trace_id'      => $tracing->currentTraceId(),
+            'span_id'       => $tracing->currentSpanId(),
         ]);
     }
 }

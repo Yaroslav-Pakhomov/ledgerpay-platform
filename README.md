@@ -1216,6 +1216,20 @@ cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
 
 ---
 
+#### Распределённая трассировка (OpenTelemetry + Jaeger)
+
+**Зачем:** операционные **метрики** (Prometheus) показывают, как система в целом; **распределённая трассировка** — как прошла конкретная операция (HTTP → фоновое задание → исходящий буфер). Контекст — W3C `traceparent`; связь с журналом и записями аудита — по идентификатору трассировки. Падение Jaeger или доля выборки трасс **не** меняют финансовое состояние; метрики через OpenTelemetry **не** выгружаем.
+
+- SDK через env `OTEL_*` (в Sail — `compose.yaml` на сервисе `laravel.test`; `OTEL_METRICS_EXPORTER=none`, метрики — Prometheus).
+- Profile **`observability`** поднимает также **Jaeger**: UI `http://127.0.0.1:16686`, OTLP из приложения → `http://jaeger:4318`.
+- Входящий заголовок **`traceparent`** (W3C); в ответах API — **`X-Trace-Id`**.
+- Цепочка: HTTP → `ProcessTransactionJob` → outbox headers → `PublishOutboxMessageJob`.
+- Подробнее: [ADR-016](./docs/architecture/adr-016-opentelemetry-tracing.md).
+
+Тесты: `./vendor/bin/sail artisan test --filter=Tracing`
+
+---
+
 ## Возможные следующие шаги
 
 Возможные направления развития проекта:
