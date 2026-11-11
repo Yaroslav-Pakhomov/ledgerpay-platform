@@ -29,6 +29,12 @@ jobs:
       QUEUE_CONNECTION: sync
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
+      OTEL_PHP_AUTOLOAD_ENABLED: "true"
+      OTEL_TRACES_EXPORTER: "none"
+      OTEL_METRICS_EXPORTER: "none"
+      OTEL_LOGS_EXPORTER: "none"
+      OTEL_PROPAGATORS: "tracecontext"
+      OTEL_TRACES_SAMPLER: "always_on"
 
     # Контейнер PostgreSQL — доступен на localhost:5432
     services:
