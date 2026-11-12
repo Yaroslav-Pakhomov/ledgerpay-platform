@@ -6,6 +6,7 @@ namespace App\Application\Outbox\Jobs;
 
 use App\Application\Outbox\Services\OutboxPublisherService;
 use App\Application\Tracing\Middleware\TraceQueuedJob;
+use App\Application\Tracing\Support\SpanNames;
 use App\Console\Commands\DispatchPendingOutboxMessagesCommand;
 use App\Domain\Outbox\Enums\OutboxStatus;
 use App\Domain\Outbox\Models\OutboxMessage;
@@ -31,6 +32,10 @@ use Throwable;
  *
  * При исчерпании retry {@see failed()} переводит запись в {@see OutboxStatus::Failed}
  * с отложенным `available_at` для повторного dispatch.
+ *
+ * Трассировка: {@see TraceQueuedJob} — сегмент потребителя {@see SpanNames::OUTBOX_PUBLISH};
+ * родитель — `$traceparent` из headers outbox ({@see DispatchPendingOutboxMessagesCommand})
+ * или контекст Laravel при dispatch.
  */
 #[Backoff(15)]
 #[Tries(5)]
@@ -55,15 +60,16 @@ final class PublishOutboxMessageJob implements ShouldQueue
      * - releaseAfter(15) — отложить повтор при overlap;
      * - expireAfter(120) — снять lock, если worker упал без release.
      *
-     * Трассировка: {@see TraceQueuedJob} (`ledgerpay.outbox.publish`) сегмент потребителя с `$traceparent` из конструктора (headers outbox,
-     * {@see DispatchPendingOutboxMessagesCommand}) или контекст Laravel.
+     * Трассировка: {@see TraceQueuedJob} ({@see SpanNames::OUTBOX_PUBLISH}) — сегмент потребителя;
+     * `$traceparent` из конструктора (headers outbox, {@see DispatchPendingOutboxMessagesCommand})
+     * или контекст Laravel.
      *
      * @return array<int, TraceQueuedJob|WithoutOverlapping>
      */
     public function middleware(): array
     {
         return [
-            new TraceQueuedJob(operation: 'ledgerpay.outbox.publish', traceparent: $this->traceparent),
+            new TraceQueuedJob(operation: SpanNames::OUTBOX_PUBLISH, traceparent: $this->traceparent),
             new WithoutOverlapping('outbox:' . $this->outboxMessageId)->releaseAfter(15)->expireAfter(120),
         ];
     }

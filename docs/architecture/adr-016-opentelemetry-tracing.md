@@ -25,12 +25,14 @@ LedgerPay: HTTP API → Redis/Horizon → обработка транзакци�
 Цепочка трассировки:
 
 ```text
-HTTP  → TraceHttpRequestMiddleware  → серверный сегмент
-      → TracingService::withinSpan  → дочерние сегменты (processor, project)
-      → Context (trace_id, span_id) → аудит / логи / dispatch queue
+HTTP  → TraceHttpRequestMiddleware   → SERVER (шаблон маршрута, HttpSpanNameResolver)
+      → TransactionService           → INTERNAL: idempotency → persist → enqueue
+      → Context (trace_id, span_id)  → аудит / логи / dispatch queue
 
-Queue → TraceQueuedJob              → сегмент потребителя
-Outbox→ PublishOutboxMessageJob     → traceparent из headers
+Queue → TraceQueuedJob               → CONSUMER: ledgerpay.transaction.process
+      → withinSpan                   → processor, read_model.project
+
+Outbox→ headers traceparent → PublishOutboxMessageJob → CONSUMER: ledgerpay.outbox.publish
 ```
 
 На API перед `TraceHttpRequestMiddleware` выполняется `RequestIdMiddleware` (`X-Request-Id` и трассировка независимы).
@@ -79,6 +81,38 @@ sequenceDiagram
 Перенос контекста: W3C `traceparent` через HTTP, очередь Laravel и транзакционный исходящий буфер (поле `traceparent` в заголовках сообщения).
 `trace_id` и `span_id` в неизменяемом аудите — для связи с журналом, а не вместо политики хранения трасс.
 Трассировка только для наблюдаемости: на платежи не влияет; метрики OpenTelemetry отключены (`OTEL_METRICS_EXPORTER=none`), идентификатор трассировки в метки Prometheus не попадает.
+
+### Семантика имён сегментов
+
+Стабильные имена зафиксированы в `App\Application\Tracing\Support\SpanNames`. В **имени** сегмента нет UUID, idempotency key и тел запросов; идентификаторы — только в **атрибутах**.
+
+| Имя | Тип (SpanKind) | Где |
+|-----|----------------|-----|
+| `HTTP {METHOD} {route.uri}` | SERVER | `HttpSpanNameResolver` + `TraceHttpRequestMiddleware`; атрибуты `http.route`, опционально `laravel.route.name` |
+| `ledgerpay.transaction.idempotency` | INTERNAL | `TransactionService::createTransactionOnce` (проверка ключа; при hit — `idempotency.hit` = true) |
+| `ledgerpay.transaction.persist` | INTERNAL | Та же DB-транзакция: INSERT transaction + `TransactionCreated` в outbox |
+| `ledgerpay.transaction.enqueue` | INTERNAL | Sync-проекция read model + `ProcessTransactionJob::dispatch` |
+| `ledgerpay.transaction.process` | CONSUMER | `TraceQueuedJob` на `ProcessTransactionJob` |
+| `ledgerpay.transaction.processor` | INTERNAL | `TransactionProcessorService::process` |
+| `ledgerpay.read_model.project` | INTERNAL | `ReadModelProjectionService::projectTransactionAndAccounts` (HTTP enqueue и worker) |
+| `ledgerpay.outbox.publish` | CONSUMER | `TraceQueuedJob` на `PublishOutboxMessageJob` |
+
+Операции **deposit**, **withdraw**, **transfer** используют одни и те же INTERNAL-имена; различие — атрибут `transaction.type` (`deposit` | `withdrawal` | `transfer`).
+
+#### Дерево в Jaeger (deposit, happy path, Redis + Horizon)
+
+```text
+HTTP POST api/v1/transactions/deposit                   [SERVER]
+├── ledgerpay.transaction.idempotency                   [INTERNAL]
+├── ledgerpay.transaction.persist                       [INTERNAL]
+├── ledgerpay.transaction.enqueue                       [INTERNAL]
+└── (async)
+    ledgerpay.transaction.process                         [CONSUMER]
+    ├── ledgerpay.transaction.processor                   [INTERNAL]
+    ├── ledgerpay.read_model.project                      [INTERNAL]
+    └── (после completed, scheduler)
+        ledgerpay.outbox.publish                          [CONSUMER]
+```
 
 ## Локальный стенд
 

@@ -1224,6 +1224,7 @@ cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
 - Profile **`observability`** поднимает также **Jaeger**: UI `http://127.0.0.1:16686`, OTLP из приложения → `http://jaeger:4318`.
 - Входящий заголовок **`traceparent`** (W3C); в ответах API — **`X-Trace-Id`**.
 - Цепочка: HTTP → `ProcessTransactionJob` → outbox headers → `PublishOutboxMessageJob`.
+- Имена сегментов: `SpanNames`; HTTP — шаблон маршрута (`api/v1/transactions/deposit`, …); этапы приёма операции — `ledgerpay.transaction.idempotency|persist|enqueue` (см. ADR-016 § «Семантика имён»).
 - Подробнее: [ADR-016](./docs/architecture/adr-016-opentelemetry-tracing.md).
 
 Тесты: `./vendor/bin/sail artisan test --filter=Tracing`
@@ -1238,7 +1239,7 @@ cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
 - **Sanctum token abilities** — разграничение прав доступа для API-токенов.
 - **Query/read services** — выписки и отчёты поверх проекций (базовые списки UI уже на read models, [ADR-014](./docs/architecture/adr-014-read-model-projections.md)).
 - **Metrics** — сбор технических и бизнес-метрик системы.
-- **Distributed tracing** — трассировка запросов через API, очередь и worker.
+- **Transactional Inbox** — надёжное потребление входящих событий (следующий крупный шаг после tracing).
 - **Load tests** — проверка системы под высокой нагрузкой.
 - публичный маршрут показа — [сценарий для собеседования](./docs/interview/walkthrough.md).
 

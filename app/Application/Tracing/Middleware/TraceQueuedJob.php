@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Application\Tracing\Middleware;
 
 use App\Application\Tracing\Services\TracingService;
+use App\Application\Tracing\Support\SpanNames;
 use Closure;
 use OpenTelemetry\API\Trace\SpanKind;
 use Throwable;
@@ -15,7 +16,7 @@ use Throwable;
  * Подключается в {@see ProcessTransactionJob::middleware()} и {@see PublishOutboxMessageJob::middleware()}
  * и оборачивает выполнение задачи в {@see TracingService::withinSpan} с типом
  * {@see SpanKind::KIND_CONSUMER}. Имя сегмента задаётся параметром `$operation` (например,
- * `ledgerpay.transaction.process`).
+ * {@see SpanNames::TRANSACTION_PROCESS}).
  *
  * Входящий контекст: при переданном `$traceparent` — W3C-носитель из свойств задачи (граница
  * scheduler/outbox); иначе — {@see TracingService::incomingFromLaravelContext()} (значение,

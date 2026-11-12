@@ -6,6 +6,8 @@ namespace App\Application\Transaction\Services;
 
 use App\Application\Outbox\Services\OutboxWriterService;
 use App\Application\ReadModel\Services\ReadModelProjectionService;
+use App\Application\Tracing\Services\TracingService;
+use App\Application\Tracing\Support\SpanNames;
 use App\Application\Transaction\DTO\CreateDepositData;
 use App\Application\Transaction\DTO\CreateTransferData;
 use App\Application\Transaction\DTO\CreateWithdrawalData;
@@ -19,18 +21,30 @@ use App\Domain\Transaction\Events\TransactionCreated;
 use App\Domain\Transaction\Events\TransactionRetried;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use OpenTelemetry\API\Trace\SpanInterface;
+use OpenTelemetry\API\Trace\SpanKind;
 use Throwable;
 
 /**
- * Application Service для создания и постановки транзакций в очередь.
+ * Application Service: создание транзакций и постановка в очередь.
  *
- * HTTP-слой создает транзакцию в статусе Pending, записывает outbox-событие
- * {@see TransactionCreated} через {@see OutboxWriterService::recordEvent()}
- * (в той же DB-транзакции) и dispatch'ит {@see ProcessTransactionJob}.
+ * Вызывается из HTTP/API: агрегат в статусе Pending, outbox {@see TransactionCreated}
+ * через {@see OutboxWriterService::recordEvent()} (в той же DB-транзакции),
+ * затем dispatch {@see ProcessTransactionJob}.
  *
- * Ручной retry эмитит {@see TransactionRetried} при переводе Failed → Pending.
+ * Ручной retry: Failed → Pending, outbox {@see TransactionRetried}, снова job.
  *
- * Фактическое движение денег выполняет {@see TransactionProcessorService} в worker'е.
+ * Движение денег — {@see TransactionProcessorService} в worker.
+ *
+ * Трассировка (в активном HTTP-сегменте), через {@see TracingService::withinSpan}:
+ * {@see SpanNames::TRANSACTION_IDEMPOTENCY} → {@see SpanNames::TRANSACTION_PERSIST}
+ * → {@see SpanNames::TRANSACTION_ENQUEUE}; далее consumer {@see SpanNames::TRANSACTION_PROCESS}
+ * в {@see ProcessTransactionJob}. Атрибуты: `transaction.type`, `transaction.id`;
+ * `idempotency.hit` — только при быстром совпадении в {@see SpanNames::TRANSACTION_IDEMPOTENCY}
+ * (без вложенного PERSIST). При гонке дубликат может обнаружиться уже в
+ * {@see SpanNames::TRANSACTION_PERSIST} (`lockForUpdate`): без INSERT, без ENQUEUE,
+ * атрибут `idempotency.hit` не выставляется. Ключ идемпотентности в spans не пишется.
+ * Путь {@see self::retry()} enqueue без `TRANSACTION_ENQUEUE` (наследует только HTTP).
  */
 final readonly class TransactionService
 {
@@ -38,6 +52,7 @@ final readonly class TransactionService
         private OutboxWriterService $outboxWriter,
         private TransactionQueueRouter $queueRouter,
         private ReadModelProjectionService $projectionService,
+        private TracingService $tracing,
     ) {}
 
     /**
@@ -73,9 +88,9 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
+        $result = $this->createTransactionOnce($data->idempotencyKey, TransactionType::Deposit, $callbackTransaction);
 
-        $this->dispatchIfNewPending($result);
+        $this->dispatchIfNewPending($result, TransactionType::Deposit);
 
         return new TransactionCreationResult(transaction: $result->transaction->refresh(), created: $result->created);
     }
@@ -113,9 +128,9 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
+        $result = $this->createTransactionOnce($data->idempotencyKey, TransactionType::Withdrawal, $callbackTransaction);
 
-        $this->dispatchIfNewPending($result);
+        $this->dispatchIfNewPending($result, TransactionType::Withdrawal);
 
         return new TransactionCreationResult(
             transaction: $result->transaction->refresh(),
@@ -159,9 +174,9 @@ final readonly class TransactionService
             ]);
         };
 
-        $result = $this->createTransactionOnce($data->idempotencyKey, $callbackTransaction);
+        $result = $this->createTransactionOnce($data->idempotencyKey, TransactionType::Transfer, $callbackTransaction);
 
-        $this->dispatchIfNewPending($result);
+        $this->dispatchIfNewPending($result, TransactionType::Transfer);
 
         return new TransactionCreationResult(
             transaction: $result->transaction->refresh(),
@@ -213,84 +228,117 @@ final readonly class TransactionService
     }
 
     /**
-     * Конкурентная идемпотентность.
+     * Конкурентная идемпотентность и персистенция агрегата.
      *
-     * Сначала смотрим существующую запись.
-     * Потом создаем внутри DB transaction.
-     * Unique index на idempotency_key остается финальной защитой от race condition.
+     * Внешний сегмент {@see SpanNames::TRANSACTION_IDEMPOTENCY}: lookup без блокировки;
+     * при раннем hit — `idempotency.hit`, без вложенного PERSIST и без ENQUEUE.
+     * Иначе вложенный {@see SpanNames::TRANSACTION_PERSIST}: DB-транзакция Laravel,
+     * `lockForUpdate` по `idempotency_key`; при уже существующей записи — `created === false`
+     * (без INSERT, без outbox, `idempotency.hit` не выставляется); иначе INSERT и outbox
+     * {@see TransactionCreated}. ENQUEUE — только у вызывающего кода при `created === true`.
+     * Unique index на `idempotency_key` — финальная защита от гонки.
+     *
+     * @param callable(): Transaction $callbackTransaction
      *
      * @throws Throwable
      */
-    private function createTransactionOnce(string $idempotencyKey, callable $callbackTransaction): TransactionCreationResult
+    private function createTransactionOnce(string $idempotencyKey, TransactionType $type, callable $callbackTransaction): TransactionCreationResult
     {
-        $existing = $this->findByIdempotencyKey($idempotencyKey);
+        return $this->tracing->withinSpan(
+            name: SpanNames::TRANSACTION_IDEMPOTENCY,
+            callback: function (SpanInterface $span) use ($idempotencyKey, $type, $callbackTransaction): TransactionCreationResult {
+                $existing = $this->findByIdempotencyKey($idempotencyKey);
 
-        /**
-         * Идемпотентность гарантирует,
-         * что повторный запрос не приведет
-         * к повторному движению денежных средств.
-         */
-        if ($existing instanceof Transaction) {
-            return new TransactionCreationResult(
-                transaction: $existing,
-                created: false,
-            );
+                /**
+                 * Идемпотентность гарантирует,
+                 * что повторный запрос не приведет
+                 * к повторному движению денежных средств.
+                 */
+                if ($existing instanceof Transaction) {
+                    $span->setAttribute('idempotency.hit', true);
 
-        }
+                    return new TransactionCreationResult(
+                        transaction: $existing,
+                        created: false,
+                    );
 
-        return DB::transaction(function () use ($idempotencyKey, $callbackTransaction): TransactionCreationResult {
-            /**
-             * Пессимистическая блокировка под конкурентные idempotency-запросы.
-             * Вместе с unique index на idempotency_key гарантирует,
-             * что будет создан ровно один агрегат Transaction.
-             */
-            $existing = Transaction::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
+                }
 
-            if ($existing instanceof Transaction) {
-                return new TransactionCreationResult(
-                    transaction: $existing,
-                    created: false,
-                );
-            }
+                return $this->tracing->withinSpan(
+                    name: SpanNames::TRANSACTION_PERSIST,
+                    callback: fn (): TransactionCreationResult => DB::transaction(function () use ($idempotencyKey, $callbackTransaction): TransactionCreationResult {
+                        /**
+                         * Пессимистическая блокировка под конкурентные idempotency-запросы.
+                         * Вместе с unique index на idempotency_key гарантирует,
+                         * что будет создан ровно один агрегат Transaction.
+                         */
+                        $existing = Transaction::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
 
-            $transaction = $callbackTransaction();
+                        if ($existing instanceof Transaction) {
+                            return new TransactionCreationResult(
+                                transaction: $existing,
+                                created: false,
+                            );
+                        }
 
-            /**
-             * Outbox: {@see TransactionCreated} — в той же DB-транзакции, что и INSERT transaction.
-             * Гарантирует, что внешние потребители узнают о создании операции после commit.
-             */
-            $this->outboxWriter->recordEvent(
-                new TransactionCreated($transaction),
-            );
+                        $transaction = $callbackTransaction();
 
-            return new TransactionCreationResult(
-                transaction: $transaction,
-                created: true,
-            );
-        });
+                        /**
+                         * Outbox: {@see TransactionCreated} — в той же DB-транзакции, что и INSERT transaction.
+                         * Гарантирует, что внешние потребители узнают о создании операции после commit.
+                         */
+                        $this->outboxWriter->recordEvent(
+                            new TransactionCreated($transaction),
+                        );
+
+                        return new TransactionCreationResult(
+                            transaction: $transaction,
+                            created: true,
+                        );
+                    }),
+                    kind: SpanKind::KIND_INTERNAL,
+                    attributes: [
+                        'transaction.type' => $type->value,
+                    ]);
+            },
+            kind: SpanKind::KIND_INTERNAL,
+            attributes: [
+                'transaction.type' => $type->value,
+            ]);
     }
 
     /**
-     * Ставит в очередь обработку только что созданной pending-транзакции.
+     * Постановка в очередь только что созданной pending-транзакции.
      *
-     * При повторном idempotency-запросе ($result->created === false)
-     * job не dispatch'ится повторно — иначе одна и та же транзакция
-     * могла бы обрабатываться несколько раз, пока status === Pending.
+     * При idempotency-replay (`$result->created === false`) job не dispatch'ится —
+     * иначе одна запись могла бы обрабатываться многократно, пока status === Pending.
+     *
+     * Сегмент {@see SpanNames::TRANSACTION_ENQUEUE}: проекция read model
+     * ({@see ReadModelProjectionService::projectTransactionAndAccounts()})
+     * и dispatch {@see ProcessTransactionJob} в shard-очередь ({@see TransactionQueueRouter}).
+     *
+     * @throws Throwable
      */
-    private function dispatchIfNewPending(TransactionCreationResult $result): void
+    private function dispatchIfNewPending(TransactionCreationResult $result, TransactionType $type): void
     {
-        if (!$result->created) {
+        if (!$result->created || $result->transaction->status !== TransactionStatus::Pending) {
             return;
         }
 
-        if ($result->transaction->status !== TransactionStatus::Pending) {
-            return;
-        }
+        $this->tracing->withinSpan(
+            name: SpanNames::TRANSACTION_ENQUEUE,
+            callback: function () use ($result): void {
+                $this->projectionService->projectTransactionAndAccounts($result->transaction);
 
-        $this->projectionService->projectTransactionAndAccounts($result->transaction);
-
-        ProcessTransactionJob::dispatch($result->transaction->id)
-            ->onQueue($this->queueRouter->queueFor($result->transaction));
+                ProcessTransactionJob::dispatch($result->transaction->id)
+                    ->onQueue($this->queueRouter->queueFor($result->transaction));
+            },
+            kind: SpanKind::KIND_INTERNAL,
+            attributes: [
+                'transaction.type' => $type->value,
+                'transaction.id'   => (string) $result->transaction->id,
+            ],
+        );
     }
 
     /**

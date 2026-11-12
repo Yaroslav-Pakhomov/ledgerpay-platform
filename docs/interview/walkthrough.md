@@ -221,6 +221,10 @@ app/Http
 - Audit backoffice: фильтр по `trace_id`; логи и Problem Details — `trace_id`.
 - Метрики и traces разделены (ADR-015 vs ADR-016).
 - Демо: curl `/api/v1/health/live -i`, затем deposit и trace tree в Jaeger (`ledgerpay-api`).
+- `SpanNames`, `HttpSpanNameResolver`, сегменты в `TransactionService`.
+- В Jaeger у deposit ожидаем корневой span `HTTP POST api/v1/transactions/deposit` (без uuid в **названии**) и детей: `idempotency` → `persist` → `enqueue` → (async) `transaction.process` → `processor` → `read_model.project` → `outbox.publish`.
+- Связка с аудитом: `X-Trace-Id` из ответа → фильтр `/backoffice/audit-logs?trace_id=...`.
+- Для полного async-дерева: Horizon (`make worker` или `sail artisan horizon`), scheduler для outbox (`make schedule` или `php artisan schedule:work`), `QUEUE_CONNECTION=redis` (не sync).
 
 ## 12. Показать тесты
 

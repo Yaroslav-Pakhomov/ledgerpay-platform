@@ -8,9 +8,11 @@ use App\Application\Audit\Services\AuditLoggerService;
 use App\Application\ReadModel\Services\ReadModelProjectionService;
 use App\Application\Tracing\Middleware\TraceQueuedJob;
 use App\Application\Tracing\Services\TracingService;
+use App\Application\Tracing\Support\SpanNames;
 use App\Application\Transaction\Services\TransactionProcessorService;
 use App\Domain\Audit\Enums\AuditAction;
 use App\Domain\Transaction\Enums\TransactionStatus;
+use App\Domain\Transaction\Events\TransactionFailed;
 use App\Domain\Transaction\Models\Transaction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -36,9 +38,9 @@ use Throwable;
  * из processor → retry ×5 → failed() записывает Failed, outbox {@see TransactionFailed}
  * и audit {@see AuditAction::TransactionFailed}.
  *
- * Трассировка: {@see TraceQueuedJob} (`ledgerpay.transaction.process`, родитель из контекста Laravel
- * при dispatch); внутри {@see self::handle()} — внутренние сегменты `ledgerpay.transaction.processor`
- * и `ledgerpay.read_model.project` через {@see TracingService::withinSpan}.
+ * Трассировка: {@see TraceQueuedJob} ({@see SpanNames::TRANSACTION_PROCESS}, родитель из контекста Laravel
+ * при dispatch); внутри {@see self::handle()} — внутренние сегменты {@see SpanNames::TRANSACTION_PROCESSOR}
+ * и {@see SpanNames::READ_MODEL_PROJECT} через {@see TracingService::withinSpan}.
  */
 #[Backoff(10)]
 #[Tries(5)]
@@ -54,7 +56,7 @@ final class ProcessTransactionJob implements ShouldQueue
     }
 
     /**
-     * {@see TraceQueuedJob} — сегмент потребителя (`ledgerpay.transaction.process`, родитель из контекста
+     * {@see TraceQueuedJob} — сегмент потребителя ({@see SpanNames::TRANSACTION_PROCESS}, родитель из контекста
      * Laravel при dispatch).
      *
      * {@see WithoutOverlapping} защищает от параллельной обработки одной и той же transaction.
@@ -70,7 +72,7 @@ final class ProcessTransactionJob implements ShouldQueue
     {
         return [
             // Сначала трассировка — Context заполнен до handle(); WithoutOverlapping не создаёт сегмент.
-            new TraceQueuedJob(operation: 'ledgerpay.transaction.process'),
+            new TraceQueuedJob(operation: SpanNames::TRANSACTION_PROCESS),
             new WithoutOverlapping('transaction:' . $this->transactionId)->releaseAfter(10)->expireAfter(60),
         ];
     }
@@ -116,7 +118,7 @@ final class ProcessTransactionJob implements ShouldQueue
 
         // Деньги, ledger, outbox transaction.completed — внутри одного внутреннего сегмента.
         $processed = $tracing->withinSpan(
-            name: 'ledgerpay.transaction.processor',
+            name: SpanNames::TRANSACTION_PROCESSOR,
             callback: fn () => $transactionProcessor->process($transaction),
             incoming: null,
             kind: SpanKind::KIND_INTERNAL,
@@ -127,7 +129,7 @@ final class ProcessTransactionJob implements ShouldQueue
 
         // Read model отдельно в Jaeger: видно latency проекции после успешного processor.
         $tracing->withinSpan(
-            name: 'ledgerpay.read_model.project',
+            name: SpanNames::READ_MODEL_PROJECT,
             callback: fn () => $projectionService->projectTransactionAndAccounts($processed),
             kind: SpanKind::KIND_INTERNAL,
             attributes: [
@@ -156,7 +158,7 @@ final class ProcessTransactionJob implements ShouldQueue
     /**
      * Фиксирует терминальный статус Failed на агрегате после исчерпания retry.
      *
-     * В одной DB-транзакции: Failed + outbox {@see \App\Domain\Transaction\Events\TransactionFailed}.
+     * В одной DB-транзакции: Failed + outbox {@see TransactionFailed}.
      * Затем — {@see AuditAction::TransactionFailed} через {@see AuditLoggerService}.
      * В логе `trace_id` / `span_id` могут отсутствовать (вызов вне цепочки {@see TraceQueuedJob}).
      *
