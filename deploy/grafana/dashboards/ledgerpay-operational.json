@@ -18,7 +18,7 @@
             "gridPos": { "h": 3, "w": 24, "x": 0, "y": 0 },
             "options": {
                 "mode": "markdown",
-                "content": "Источник: `GET /metrics` → Prometheus. Обновление business-метрик ~1 мин (`ledgerpay:metrics:refresh`)."
+                "content": "Источник: `GET /metrics` → Prometheus. Обновление business-метрик ~1 мин (`ledgerpay:metrics:refresh`). Inbox: счётчики `ledgerpay_inbox_*` из PostgreSQL (не LLEN очереди `inbox`). См. ADR-017."
             }
         },
         {
@@ -113,6 +113,30 @@
                 { "expr": "ledgerpay_projection_account_row_gap", "legendFormat": "accounts", "refId": "A" },
                 { "expr": "ledgerpay_projection_transaction_row_gap", "legendFormat": "transactions", "refId": "B" }
             ]
+        },
+        {
+            "id": 11,
+            "type": "timeseries",
+            "title": "Inbox (статусы в БД)",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+            "datasource": { "type": "prometheus", "uid": "ledgerpay-prometheus" },
+            "targets": [
+                { "expr": "ledgerpay_inbox_received", "legendFormat": "received", "refId": "A" },
+                { "expr": "ledgerpay_inbox_processing", "legendFormat": "processing", "refId": "B" },
+                { "expr": "ledgerpay_inbox_processed", "legendFormat": "processed", "refId": "C" },
+                { "expr": "ledgerpay_inbox_failed", "legendFormat": "failed", "refId": "D" },
+                { "expr": "ledgerpay_inbox_dead", "legendFormat": "dead", "refId": "D2" },
+                { "expr": "ledgerpay_inbox_ignored", "legendFormat": "ignored", "refId": "E" }
+            ]
+        },
+        {
+            "id": 12,
+            "type": "stat",
+            "title": "Inbox: возраст старейшего received/failed (сек)",
+            "gridPos": { "h": 4, "w": 8, "x": 12, "y": 27 },
+            "datasource": { "type": "prometheus", "uid": "ledgerpay-prometheus" },
+            "targets": [{ "expr": "ledgerpay_inbox_oldest_pending_age_seconds", "refId": "A" }],
+            "fieldConfig": { "defaults": { "unit": "s" } }
         }
     ]
 }

@@ -2,6 +2,7 @@
 #
 # Покрывает маршруты из routes/api_v1.php (стабильный контракт /api/v1):
 #   Health (2), Auth (4), Customers (3), Accounts (5), Transactions (6)
+#   Integrations (1): inbox webhook (Bearer INBOX_DEMO_TOKEN, не Sanctum)
 #
 # Конвенции:
 #   - суммы в minor units (100.50 RUB = 10050)
@@ -43,6 +44,9 @@ info:
     (`per_page`, `next_cursor`, `prev_cursor`, `has_more_pages`); query `cursor`, `limit`.
     GET `/transactions/{uuid}` — объект транзакции **в корне** JSON (не обёртка list).
 
+    Inbox webhook: POST `/integrations/inbox/events` — Bearer `INBOX_DEMO_TOKEN` (см. ADR-017), ответ **202**;
+    конфликт содержимого — **409** (Problem Details).
+
 servers:
   - url: http://localhost/api/v1
     description: Локальная среда (v1)
@@ -60,6 +64,8 @@ tags:
     description: Счета, баланс, ledger
   - name: Transactions
     description: Движение денег и retry
+  - name: Integrations
+    description: Входящие интеграции (machine-to-machine, не Sanctum)
 
 # Bearer token (Sanctum) для всех endpoints, кроме register/login и health
 security:
@@ -512,6 +518,47 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  # ─── Integrations ───────────────────────────────────────────────────
+  /integrations/inbox/events:
+    post:
+      security:
+        - inboxDemoAuth: [ ]
+      summary: Приём внешнего события во входящую очередь (inbox)
+      description: |
+        Демо-webhook. Источник (`source`) берётся из конфигурации сервера, не из тела.
+        Идемпотентный повтор с тем же `external_message_id` и тем же содержимым — снова **202**.
+        Тот же id с другим `event_name` или `payload` — **409**.
+      tags: [ Integrations ]
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InboxEventRequest"
+      responses:
+        "202":
+          description: Событие принято (статус `received`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxEventAccepted"
+        "403":
+          description: Неверный или отсутствующий Bearer-токен inbox
+        "413":
+          description: Тело запроса превышает `inbox.max_payload_bytes`
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          description: Тот же external_message_id, другое содержимое
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
 # ─── Reusable components ──────────────────────────────────────────────
 components:
   securitySchemes:
@@ -520,6 +567,13 @@ components:
       scheme: bearer
       bearerFormat: Sanctum
       description: Sanctum token из /auth/login или /auth/register
+    inboxDemoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: INBOX_DEMO_TOKEN
+      description: |
+        Токен из `.env` (`INBOX_DEMO_TOKEN`, ≥ 32 символов).
+        Не Sanctum; middleware `AuthenticateInboxProvider`.
 
   parameters:
     Uuid:
@@ -829,3 +883,53 @@ components:
           additionalProperties:
             type: array
             items: { type: string }
+
+    InboxEventRequest:
+      type: object
+      required:
+        - external_message_id
+        - event_name
+        - payload
+      properties:
+        external_message_id:
+          type: string
+          maxLength: 255
+          example: demo-event-001
+        event_name:
+          type: string
+          maxLength: 150
+          example: external.ping
+        payload:
+          type: object
+          additionalProperties: true
+          example:
+            ping: true
+
+    InboxEventAccepted:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - uuid
+            - external_message_id
+            - source
+            - event_name
+            - status
+          properties:
+            uuid:
+              type: string
+              format: uuid
+            external_message_id:
+              type: string
+            source:
+              type: string
+              example: demo-provider
+            event_name:
+              type: string
+            status:
+              type: string
+              enum: [ received, processing, processed, failed, dead, ignored ]
+              example: received

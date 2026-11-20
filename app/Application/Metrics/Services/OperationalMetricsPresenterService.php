@@ -103,6 +103,18 @@ final readonly class OperationalMetricsPresenterService
                 ],
             ],
             [
+                'title' => 'Inbox',
+                'items' => [
+                    ['key' => 'inbox_received', 'label' => 'Принято, ожидает обработки', 'value' => $get('inbox_received')],
+                    ['key' => 'inbox_processing', 'label' => 'В обработке', 'value' => $get('inbox_processing')],
+                    ['key' => 'inbox_processed', 'label' => 'Обработано', 'value' => $get('inbox_processed')],
+                    ['key' => 'inbox_failed', 'label' => 'Ожидает повтор', 'value' => $get('inbox_failed')],
+                    ['key' => 'inbox_dead', 'label' => 'Исчерпан повтор', 'value' => $get('inbox_dead')],
+                    ['key' => 'inbox_ignored', 'label' => 'Проигнорировано', 'value' => $get('inbox_ignored')],
+                    ['key' => 'inbox_oldest_pending_age_seconds', 'label' => 'Возраст старейшего received/failed (сек)', 'value' => $get('inbox_oldest_pending_age_seconds')],
+                ],
+            ],
+            [
                 'title' => 'Очереди (готовые задания)',
                 'items' => [
                     ['key' => 'queue_transactions_total_backlog', 'label' => 'Сегменты операций (сумма)', 'value' => $get('queue_transactions_total_backlog')],
