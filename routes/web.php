@@ -17,6 +17,7 @@ use App\Http\Controllers\Web\Backoffice\BalanceSnapshotController;
 use App\Http\Controllers\Web\Backoffice\CustomerController as BackofficeCustomerController;
 use App\Http\Controllers\Web\Backoffice\DashboardController as BackofficeDashboardController;
 use App\Http\Controllers\Web\Backoffice\DiagnosticsController;
+use App\Http\Controllers\Web\Backoffice\InboxController;
 use App\Http\Controllers\Web\Backoffice\OperationalMetricsController;
 use App\Http\Controllers\Web\Backoffice\OutboxController;
 use App\Http\Controllers\Web\Backoffice\ReconciliationController;
@@ -129,6 +130,9 @@ Route::middleware('auth')->group(function (): void {
 
             // Список опубликованных операций
             Route::get('/outbox', [OutboxController::class, 'index'])->name('outbox.index');
+
+            // Список входящих операций
+            Route::get('/inbox', [InboxController::class, 'index'])->name('inbox.index');
 
             // Страница операционной диагностики
             Route::get('/diagnostics', DiagnosticsController::class)->name('diagnostics');

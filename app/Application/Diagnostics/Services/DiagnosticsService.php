@@ -7,6 +7,7 @@ namespace App\Application\Diagnostics\Services;
 use App\Application\Diagnostics\Checks\DatabaseConnectionCheck;
 use App\Application\Diagnostics\Checks\FailedTransactionsCheck;
 use App\Application\Diagnostics\Checks\IDiagnosticCheck;
+use App\Application\Diagnostics\Checks\InboxBacklogCheck;
 use App\Application\Diagnostics\Checks\OutboxBacklogCheck;
 use App\Application\Diagnostics\Checks\QueueBacklogCheck;
 use App\Application\Diagnostics\Checks\RedisConnectionCheck;
@@ -28,6 +29,7 @@ final readonly class DiagnosticsService
         private QueueBacklogCheck $queueBacklog,
         private OutboxBacklogCheck $outboxBacklog,
         private FailedTransactionsCheck $failedTransactions,
+        private InboxBacklogCheck $inboxBacklog,
     ) {}
 
     /**
@@ -40,6 +42,7 @@ final readonly class DiagnosticsService
             $this->redis->run(),
             $this->queueBacklog->run(),
             $this->outboxBacklog->run(),
+            $this->inboxBacklog->run(),
             $this->failedTransactions->run(),
         ];
     }

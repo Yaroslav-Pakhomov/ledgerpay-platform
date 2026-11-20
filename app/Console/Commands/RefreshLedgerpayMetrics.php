@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Application\Metrics\MetricsSnapshot;
 use App\Application\Transaction\Routing\TransactionQueueRouter;
+use App\Domain\Inbox\Models\InboxMessage;
 use App\Domain\Outbox\Models\OutboxMessage;
 use App\Domain\Reconciliation\Models\ReconciliationReport;
 use App\Domain\Transaction\Models\Transaction;
@@ -19,9 +20,14 @@ use Throwable;
 /**
  * Команда Artisan: предрасчёт операционных метрик и запись в {@see MetricsSnapshot}.
  *
- * Агрегаты из PostgreSQL (операции, outbox, сверка, разрыв строк проекций)
- * и длины списков Redis-очередей (сегменты `transactions-account-XX`, default, outbox).
+ * Агрегаты из PostgreSQL: операции, outbox, **inbox** ({@see InboxMessage}),
+ * сверка, разрыв строк read-model проекций; плюс длины Redis-очередей
+ * (сегменты `transactions-account-XX`, `default`, `outbox` — не LLEN очереди `inbox`:
+ * backlog входящих отражается счётчиками `inbox_*` в БД).
  * При ошибке БД снимок не перезаписывается ({@see Command::FAILURE}).
+ *
+ * Ключи снимка экспортируются как `ledgerpay_*` через {@see PrometheusServiceProvider} (ADR-015);
+ * inbox — ADR-017, `inbox_oldest_pending_age_seconds` по `received`/`failed`.
  *
  * Планировщик: {@see routes/console.php} — `ledgerpay:metrics:refresh`, ~1 мин,
  * withoutOverlapping, onOneServer.
@@ -31,7 +37,9 @@ use Throwable;
 final class RefreshLedgerpayMetrics extends Command
 {
     /**
-     * Собирает метрики из БД и Redis, сохраняет снимок; при сбое БД — выход с ошибкой без записи.
+     * Собирает метрики из БД (transactions, outbox, inbox, reconciliation, projections)
+     * и Redis (shard + default + outbox backlog), сохраняет снимок.
+     * При сбое БД — {@see Command::FAILURE} без записи; при сбое Redis — снимок БД сохраняется с queue_collector_success=0.
      *
      * @return int Command::SUCCESS|Command::FAILURE
      */
@@ -61,6 +69,18 @@ final class RefreshLedgerpayMetrics extends Command
             $created = OutboxMessage::query()->where('status', 'pending')->min('created_at');
 
             $values['outbox_oldest_pending_age_seconds'] = $created === null ? 0 : max(0, now()->diffInSeconds($created));
+
+            // Входящие (inbox): счётчики по {@see InboxStatus}; возраст старейшего received/failed
+            // (ожидает dispatch или retry в PostgreSQL, не длина Redis-очереди inbox).
+            $inboxStatuses = InboxMessage::query()->select('status', DB::raw('COUNT(*) AS aggregate'))->groupBy('status')->pluck('aggregate', 'status');
+
+            foreach (['received', 'processing', 'processed', 'failed', 'dead', 'ignored'] as $status) {
+                $values['inbox_' . $status] = (int) ($inboxStatuses[$status] ?? 0);
+            }
+
+            $oldestInbox = InboxMessage::query()->whereIn('status', ['received', 'failed'])->min('received_at');
+
+            $values['inbox_oldest_pending_age_seconds'] = $oldestInbox === null ? 0 : max(0, now()->diffInSeconds($oldestInbox));
 
             // Сверка: секунд с последнего отчёта; -1 — сверка ещё не выполнялась.
             $checked = ReconciliationReport::query()->max('checked_at');

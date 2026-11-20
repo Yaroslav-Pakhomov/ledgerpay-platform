@@ -48,7 +48,7 @@ final class DiagnosticsTest extends TestCase
                 ],
             ]);
 
-        $this->assertCount(5, $response->json('checks'));
+        $this->assertCount(6, $response->json('checks'));
     }
 
     public function test_readiness_endpoint_returns_503_when_failed(): void

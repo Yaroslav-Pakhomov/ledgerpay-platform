@@ -98,6 +98,13 @@ function navActive(...patterns) {
                                         Outbox
                                     </Link>
                                     <Link
+                                        :href="route('backoffice.inbox.index')"
+                                        class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
+                                        @click="moreOpen = false"
+                                    >
+                                        Inbox
+                                    </Link>
+                                    <Link
                                         :href="route('backoffice.reconciliation.index')"
                                         class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5"
                                         @click="moreOpen = false"

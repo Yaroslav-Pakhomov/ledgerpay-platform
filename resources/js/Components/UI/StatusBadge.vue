@@ -18,18 +18,25 @@ const labels = {
     cancelled : 'Отменена',
     matched   : 'Совпало',
     published : 'Опубликовано',
+    received  : 'Принято',
+    processed : 'Обработано',
+    dead      : 'Dead',
+    ignored   : 'Игнор',
 };
 
 const tone = computed(() => {
     const s = props.status;
-    if (['active', 'completed', 'matched', 'published', 'credit', 'ok'].includes(s)) {
+    if (['active', 'completed', 'matched', 'published', 'processed', 'credit', 'ok'].includes(s)) {
         return 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/25';
     }
-    if (['pending', 'processing', 'warning'].includes(s)) {
+    if (['pending', 'processing', 'warning', 'received'].includes(s)) {
         return 'bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/25';
     }
-    if (['failed', 'blocked', 'mismatched', 'debit'].includes(s)) {
+    if (['failed', 'blocked', 'mismatched', 'debit', 'dead'].includes(s)) {
         return 'bg-red-500/15 text-red-300 ring-1 ring-red-500/25';
+    }
+    if (['ignored'].includes(s)) {
+        return 'bg-white/10 text-gray-300 ring-1 ring-white/10';
     }
     return 'bg-white/10 text-gray-300 ring-1 ring-white/10';
 });
