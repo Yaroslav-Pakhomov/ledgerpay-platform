@@ -6,8 +6,12 @@ use App\Http\Controllers\Api\V1\AccountController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CustomerController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\InboxWebhookController;
 use App\Http\Controllers\Api\V1\TransactionController;
+use App\Http\Middleware\AuthenticateInboxProvider;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware(['throttle:api-global', AuthenticateInboxProvider::class])->post('/integrations/inbox/events', InboxWebhookController::class);
 
 Route::controller(HealthController::class)->prefix('health')->name('health.')->group(function () {
     Route::get('/live', 'live')->name('live');

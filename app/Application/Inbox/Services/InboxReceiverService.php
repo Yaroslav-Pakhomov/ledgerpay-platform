@@ -7,7 +7,6 @@ namespace App\Application\Inbox\Services;
 use App\Application\Inbox\Exceptions\InboxConflictException;
 use App\Domain\Inbox\Enums\InboxStatus;
 use App\Domain\Inbox\Models\InboxMessage;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
 
@@ -53,7 +52,7 @@ final class InboxReceiverService
         $hash = hash('sha256', $json);
         $now  = now();
 
-        DB::table('inbox_messages')->insertOrIgnore([
+        InboxMessage::query()->insertOrIgnore([
             'uuid'                => (string) Str::uuid(),
             'source'              => $source,
             'external_message_id' => $externalMessageId,
