@@ -201,7 +201,6 @@ app/Http
 - страница диагностики: `/backoffice/diagnostics`
 - мониторинг очередей: `/horizon` (backoffice)
 
-
 ### Операционные метрики (Prometheus)
 
 - Business-метрики **не** считаются на каждый scrape: команда `ledgerpay:metrics:refresh` (scheduler ~1 мин) пишет снимок в Redis (`MetricsSnapshot`).
@@ -226,11 +225,24 @@ app/Http
 - Связка с аудитом: `X-Trace-Id` из ответа → фильтр `/backoffice/audit-logs?trace_id=...`.
 - Для полного async-дерева: Horizon (`make worker` или `sail artisan horizon`), scheduler для outbox (`make schedule` или `php artisan schedule:work`), `QUEUE_CONNECTION=redis` (не sync).
 
+### Transactional Inbox (входящие события)
+
+Коротко: **outbox — исходящие** доменные события после commit; **inbox — входящие** от интеграций с идемпотентным приёмом.
+
+- Webhook: `POST /api/v1/integrations/inbox/events` (Bearer `INBOX_DEMO_TOKEN`, не Sanctum).
+- UNIQUE `(source, external_message_id)` + `payload_hash`; конфликт → 409.
+- Приём без немедленного Redis; `inbox:dispatch-pending` (lease + `SKIP LOCKED`) → очередь `inbox`.
+- Horizon: supervisor `inbox`, `tries=1`; durable retry в PostgreSQL.
+- Демо: `external.ping` → `inbox_ping_receipts`; span `ledgerpay.inbox.process` (ADR-016).
+- UI: `/backoffice/inbox` (без payload); метрики `ledgerpay_inbox_*` после `ledgerpay:metrics:refresh`.
+- Подробнее: [ADR-017](../architecture/adr-017-inbox-pattern.md).
+
 ## 12. Показать тесты
 
 Открыть:
 
 `tests/Feature`, `tests/Feature/Partitioning`, `tests/Unit/Partitioning` и `tests/Concurrency`
+- inbox — `InboxPatternTest`, `InboxWebhookTest`, `BackofficeInboxTest`
 
 Выделить:
 
@@ -250,6 +262,7 @@ app/Http
 - каталог партиций — `tests/Unit/Partitioning/PartitionCatalogTest`: четыре таблицы, отказ для неизвестной, мутабелен только outbox
 - команды `partitions:*` — `tests/Feature/Partitioning/TablePartitionsCommandTest`: неизвестная таблица, swap требует `--confirm-writes-stopped`
 - cutover — `tests/Feature/Partitioning/PartitionCutoverTest`: prepare/backfill/validate, cutover без rename, sync outbox, сумма amount, swap и ensure; runbook [partitioning-plan.md](../architecture/partitioning-plan.md)
+- **Laravel Horizon** обрабатывает shards + `outbox` + `inbox` + `default`;
 
 ## Завершение (рекомендуемая формулировка)
 

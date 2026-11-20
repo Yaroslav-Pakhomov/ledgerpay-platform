@@ -1229,6 +1229,22 @@ cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
 
 Тесты: `./vendor/bin/sail artisan test --filter=Tracing`
 
+#### Транзакционный inbox (внешние события)
+
+Идемпотентный приём webhook в PostgreSQL, асинхронная обработка в очереди `inbox`; постановка в Redis — планировщиком (`inbox:dispatch-pending`).
+
+- Приём: `POST /api/v1/integrations/inbox/events` (Bearer `INBOX_DEMO_TOKEN`, не Sanctum).
+- Уникальность: `(source, external_message_id)`; другое содержимое → HTTP 409.
+- Демо-событие: `external.ping` → запись в `inbox_ping_receipts`.
+- Готовность: проверка `inbox_backlog` (см. ADR-010).
+- Метрики: `ledgerpay_inbox_*` (после `ledgerpay:metrics:refresh`).
+- Backoffice: `/backoffice/inbox` (без тела сообщения в списке).
+- Подробнее: [ADR-017](./docs/architecture/adr-017-inbox-pattern.md).
+
+```bash
+./vendor/bin/sail artisan test --filter=Inbox
+```
+
 ---
 
 ## Возможные следующие шаги
@@ -1239,7 +1255,6 @@ cp deploy/prometheus/prometheus.yml.example deploy/prometheus/prometheus.yml
 - **Sanctum token abilities** — разграничение прав доступа для API-токенов.
 - **Query/read services** — выписки и отчёты поверх проекций (базовые списки UI уже на read models, [ADR-014](./docs/architecture/adr-014-read-model-projections.md)).
 - **Metrics** — сбор технических и бизнес-метрик системы.
-- **Transactional Inbox** — надёжное потребление входящих событий (следующий крупный шаг после tracing).
 - **Load tests** — проверка системы под высокой нагрузкой.
 - публичный маршрут показа — [сценарий для собеседования](./docs/interview/walkthrough.md).
 

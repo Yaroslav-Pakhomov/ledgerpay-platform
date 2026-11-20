@@ -41,3 +41,4 @@
 - [План партиционирования и cutover CLI](./architecture/partitioning-plan.md)
 - [ADR-015: Операционные метрики Prometheus](architecture/adr-015-prometheus-metrics.md)
 - [ADR-016: OpenTelemetry tracing](architecture/adr-016-opentelemetry-tracing.md)
+- [ADR-017: Транзакционный inbox (входящие события)](architecture/adr-017-inbox-pattern.md)

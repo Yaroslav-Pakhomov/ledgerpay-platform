@@ -85,7 +85,7 @@ GET /api/v1/health/ready
 ```
 
 - **live** — работоспособность, процесс приложения отвечает;
-- **ready** — агрегированная готовность: PostgreSQL, Redis, backlog очереди, outbox, неуспешные транзакции (при `failed` checks → HTTP 503).
+- **ready** — агрегированная готовность: PostgreSQL, Redis, backlog очереди, outbox, backlog inbox (`inbox_backlog`), неуспешные транзакции (при `failed` checks → HTTP 503).
 
 Операторские инструменты:
 
@@ -620,11 +620,12 @@ GitHub Actions ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)): на 
 1. **Scoped idempotency** — `(customer_id, idempotency_key)` unique вместо global; ключ уникален в рамках клиента, а не всей системы — разные клиенты могут использовать одинаковые ключи без конфликта.
 2. **API v2+ / эволюция JSON** — breaking changes только через новую версию; v1 отделён (`Api/V1`, `Resources/V1`, ADR при необходимости). Rate limiting на API — реализован (ADR-008); дальше — scoped Sanctum tokens.
 3. **Outbox + типизированные доменные события** — реализован (ADR-006, ADR-009): `transaction.created` / `transaction.completed` / `transaction.failed` / `transaction.retried`; Kafka transport — Redpanda при `KAFKA_ENABLED=true`.
-4. **Read Services** — выписки и отчёты поверх проекций ([ADR-014](./docs/architecture/adr-014-read-model-projections.md)); базовые списки UI уже на read models.
-5. **Observability** — Telescope в dev; Horizon для очередей (реализовано, [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)); дальше — metrics/tracing (Prometheus, OpenTelemetry).
-6. **High-load DB** — cursor pagination (API + backoffice), индексы под `id DESC`, **реализованный cutover pipeline** ([ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](./docs/architecture/partitioning-plan.md), `PartitionCatalog` / `PartitionCutover`, Artisan `partitions:*`). **Следующий шаг в prod** — поэтапный cutover по таблицам на staging, controlled swap.
+4. **Transactional inbox** — реализован ([ADR-017](./docs/architecture/adr-017-inbox-pattern.md)): симметрия outbox на входящей границе; webhook без Sanctum; обработка в очереди `inbox`.
+5. **Read Services** — выписки и отчёты поверх проекций ([ADR-014](./docs/architecture/adr-014-read-model-projections.md)); базовые списки UI уже на read models.
+6. **Observability** — Telescope в dev; Horizon для очередей (реализовано, [ADR-011](./docs/architecture/adr-011-account-sharded-transaction-queues.md)); дальше — metrics/tracing (Prometheus, OpenTelemetry).
+7. **High-load DB** — cursor pagination (API + backoffice), индексы под `id DESC`, **реализованный cutover pipeline** ([ADR-012](./docs/architecture/adr-012-cursor-pagination-partitioning.md), [partitioning-plan.md](./docs/architecture/partitioning-plan.md), `PartitionCatalog` / `PartitionCutover`, Artisan `partitions:*`). **Следующий шаг в prod** — поэтапный cutover по таблицам на staging, controlled swap.
 
-**Уже сделано (high-load):** account-sharded transaction queues + Horizon; cursor pagination и tooling партиционирования (ADR-012); снимки баланса и поэтапная сверка (ADR-013); проекции для списков UI (ADR-014, `read-models:rebuild`).
+**Уже сделано (high-load):** account-sharded transaction queues + Horizon; cursor pagination и tooling партиционирования (ADR-012); снимки баланса и поэтапная сверка (ADR-013); проекции для списков UI (ADR-014, `read-models:rebuild`); transactional inbox — webhook, `inbox:dispatch-pending`, backoffice `/backoffice/inbox` ([ADR-017](./docs/architecture/adr-017-inbox-pattern.md)).
 
 ---
 

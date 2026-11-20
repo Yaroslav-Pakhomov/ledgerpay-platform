@@ -22,6 +22,7 @@
 - Observability: Docker Compose profile `observability` (Prometheus + Grafana), provisioning datasource и дашборд `ledgerpay_*`; ссылка Grafana в backoffice (`LEDGERPAY_GRAFANA_URL`).
 - OpenTelemetry: W3C `traceparent`, spans для HTTP и queue jobs, `traceparent` в outbox, correlation `trace_id`/`span_id` в audit и structured logs, `X-Trace-Id` в ответах API, Jaeger в profile `observability` ([ADR-016](docs/architecture/adr-016-opentelemetry-tracing.md)); тесты `TracingServiceTest`, `TracingPropagationTest`.
 - Семантика сегментов трассировки для создания транзакций: `SpanNames`, `HttpSpanNameResolver` (имя HTTP по шаблону маршрута), дочерние сегменты `ledgerpay.transaction.idempotency|persist|enqueue` в `TransactionService`; единые имена consumer/internal в jobs; unit-тест `HttpSpanNameResolverTest` (дополнение [ADR-016](docs/architecture/adr-016-opentelemetry-tracing.md)).
+- Transactional Inbox: таблицы `inbox_messages` / `inbox_ping_receipts`, `InboxReceiverService`, `InboxProcessorService`, `inbox:dispatch-pending`, очередь Horizon `inbox`, webhook `POST /api/v1/integrations/inbox/events`, метрики `ledgerpay_inbox_*`, diagnostics `inbox_backlog`, backoffice `/backoffice/inbox` ([ADR-017](docs/architecture/adr-017-inbox-pattern.md)); тесты `InboxPatternTest`, `InboxWebhookTest`, `BackofficeInboxTest`.
 
 ## [2.0.0] — Portfolio Release
 

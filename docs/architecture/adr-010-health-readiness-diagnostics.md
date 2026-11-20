@@ -25,6 +25,7 @@ LedgerPay предоставляет:
 - Redis;
 - backlog очереди (при Redis — сумма по всем shard/сегмент-очередям `transactions-account-XX`, см. [ADR-011](./adr-011-account-sharded-transaction-queues.md), плюс `outbox` и `default`);
 - backlog outbox;
+- необработанный transactional inbox (`inbox_backlog`: `received`, `failed`, `dead` в `inbox_messages`, см. [ADR-017](./adr-017-inbox-pattern.md));
 - неуспешные транзакции.
 
 ## Последствия

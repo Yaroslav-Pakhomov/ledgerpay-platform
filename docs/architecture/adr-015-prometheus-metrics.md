@@ -42,9 +42,10 @@ LedgerPay — платформа обработки финансовых опе�
 ## Семантика метрик
 
 - **`transactions_*`**, **`outbox_*`** — шкалы (Gauge, текущее состояние), не счётчики (Counter).
+- **`inbox_*`** — счётчики по статусам `inbox_messages` в PostgreSQL (не LLEN очереди `inbox` в Redis); **`inbox_oldest_pending_age_seconds`** — возраст старейшего `received` / `failed`. См. [ADR-017](./adr-017-inbox-pattern.md).
 - **`reconciliation_last_check_age_seconds`** — `-1`, если сверка ни разу не запускалась.
 - **`projection_*_row_gap`** — не отставание по событиям и не актуальность данных.
-- **`queue_*`** — длина ready-списков Redis (LLEN); reserved и delayed job'ы не учитываются; метрики по каждому shard — вне объёма коммита.
+- **`queue_*`** — длина ready-списков Redis (LLEN); reserved и delayed job'ы не учитываются; метрики по каждому shard — вне объёма коммита. Очередь `inbox` в snapshot не суммируется: необработанный inbox виден по метрикам `inbox_*`.
 
 ## Последствия
 
