@@ -15,6 +15,8 @@ Artisan::command('inspire', function (): void {
 // everyMinute() — планирует запуск раз в минуту;
 // «Исходящие» в очередь
 Schedule::command('outbox:dispatch-pending --limit=100')->everyMinute()->withoutOverlapping();
+// «Входящие» в очередь
+Schedule::command('inbox:dispatch-pending --limit=100')->everyMinute()->withoutOverlapping()->onOneServer();
 
 // hourly() — планирует запуск раз в час;
 // Сверка балансов счетов с реестром проводок

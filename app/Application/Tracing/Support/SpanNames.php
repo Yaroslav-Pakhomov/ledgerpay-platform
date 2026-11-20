@@ -20,6 +20,9 @@ final class SpanNames
     /** Публикация записи outbox в transport. */
     public const string OUTBOX_PUBLISH = 'ledgerpay.outbox.publish';
 
+    /** Обработка записи inbox в worker. */
+    public const string INBOX_PROCESS = 'ledgerpay.inbox.process';
+
     // endregion
 
     // region --- HTTP API: создание / постановка транзакции (KIND_INTERNAL, TransactionService) ---

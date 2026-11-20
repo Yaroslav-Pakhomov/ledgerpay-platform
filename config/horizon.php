@@ -254,6 +254,17 @@ return [
                 'nice'         => 0,
             ],
 
+            'inbox' => [
+                'connection'   => 'redis',
+                'queue'        => ['inbox'],
+                'balance'      => 'auto',
+                'minProcesses' => 1,
+                'maxProcesses' => 4,
+                'tries'        => 1,
+                'timeout'      => 60,
+                'nice'         => 0,
+            ],
+
             'default' => [
                 'connection'   => 'redis',
                 'queue'        => ['default'],
@@ -301,6 +312,17 @@ return [
                 'minProcesses' => 1,
                 'maxProcesses' => 2,
                 'tries'        => 5,
+                'timeout'      => 60,
+                'nice'         => 0,
+            ],
+
+            'inbox' => [
+                'connection'   => 'redis',
+                'queue'        => ['inbox'],
+                'balance'      => 'auto',
+                'minProcesses' => 1,
+                'maxProcesses' => 4,
+                'tries'        => 1,
                 'timeout'      => 60,
                 'nice'         => 0,
             ],
